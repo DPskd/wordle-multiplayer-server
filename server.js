@@ -92,7 +92,6 @@ wss.on('connection', (ws) => {
       
       switch (data.type) {
         case 'create_room': {
-          // Проверяем, не в комнате ли уже игрок
           for (let [code, room] of rooms) {
             if (room.players.find(p => p.id === ws.id)) {
               sendToClient(ws, 'error', { message: 'Вы уже в комнате' });
@@ -105,6 +104,8 @@ wss.on('connection', (ws) => {
             code,
             host: ws.id,
             guest: null,
+            lang: data.lang || 'ru', // Язык комнаты
+            multiMode: data.multiMode || 'async',
             players: [{ id: ws.id, name: 'Игрок 1', ready: false, wordSet: false }],
             gameStarted: false,
             wordPhase: false,
@@ -116,8 +117,7 @@ wss.on('connection', (ws) => {
             hostGameOver: false,
             guestGameOver: false,
             hostWon: false,
-            guestWon: false,
-            multiMode: 'async'
+            guestWon: false
           };
           
           rooms.set(code, room);
@@ -125,9 +125,10 @@ wss.on('connection', (ws) => {
           sendToClient(ws, 'room_created', {
             code: room.code,
             players: room.players,
-            isHost: true
+            isHost: true,
+            lang: room.lang
           });
-          console.log(`Комната создана: ${code}`);
+          console.log(`Комната создана: ${code} (язык: ${room.lang})`);
           break;
         }
         
@@ -144,7 +145,16 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Проверяем, не в комнате ли уже игрок
+          // Проверка языка
+          const joinLang = data.lang || 'ru';
+          if (joinLang !== room.lang) {
+            const msg = joinLang === 'ru' 
+              ? 'Эта комната для английского языка. Переключите язык на EN.' 
+              : 'This room is for Russian language. Switch language to RU.';
+            sendToClient(ws, 'error', { message: msg });
+            return;
+          }
+          
           for (let [code, r] of rooms) {
             if (r.players.find(p => p.id === ws.id)) {
               sendToClient(ws, 'error', { message: 'Вы уже в комнате' });
@@ -158,10 +168,10 @@ wss.on('connection', (ws) => {
           sendToClient(ws, 'room_joined', {
             code: room.code,
             players: room.players,
-            isHost: false
+            isHost: false,
+            lang: room.lang
           });
           
-          // Уведомляем хоста
           const hostWs = clients.get(room.host);
           if (hostWs) {
             sendToClient(hostWs, 'player_joined', {
@@ -173,16 +183,19 @@ wss.on('connection', (ws) => {
         }
         
         case 'quick_play': {
+          const myLang = data.lang || 'ru';
           let foundRoom = false;
+          
           for (let [code, room] of rooms) {
-            if (room.players.length < 2 && !room.gameStarted) {
+            if (room.players.length < 2 && !room.gameStarted && room.lang === myLang && room.multiMode === (data.multiMode || 'async')) {
               room.guest = ws.id;
               room.players.push({ id: ws.id, name: 'Игрок 2', ready: false, wordSet: false });
               
               sendToClient(ws, 'room_joined', {
                 code: room.code,
                 players: room.players,
-                isHost: false
+                isHost: false,
+                lang: room.lang
               });
               
               const hostWs = clients.get(room.host);
@@ -203,6 +216,8 @@ wss.on('connection', (ws) => {
               code,
               host: ws.id,
               guest: null,
+              lang: myLang,
+              multiMode: data.multiMode || 'async',
               players: [{ id: ws.id, name: 'Игрок 1', ready: false, wordSet: false }],
               gameStarted: false,
               wordPhase: false,
@@ -214,8 +229,7 @@ wss.on('connection', (ws) => {
               hostGameOver: false,
               guestGameOver: false,
               hostWon: false,
-              guestWon: false,
-              multiMode: 'async'
+              guestWon: false
             };
             
             rooms.set(code, room);
@@ -223,9 +237,10 @@ wss.on('connection', (ws) => {
             sendToClient(ws, 'room_created', {
               code: room.code,
               players: room.players,
-              isHost: true
+              isHost: true,
+              lang: room.lang
             });
-            console.log(`Быстрая игра: создана комната ${code}`);
+            console.log(`Быстрая игра: создана комната ${code} (язык: ${myLang})`);
           }
           break;
         }
@@ -250,26 +265,22 @@ wss.on('connection', (ws) => {
           player.ready = true;
           console.log(`${player.name} готов в комнате ${playerRoom.code}`);
           
-          // Отправляем статус готовности этому игроку
           sendToClient(ws, 'ready_status', { 
             ready: true,
             players: playerRoom.players 
           });
           
-          // Отправляем обновление всем в комнате
           broadcastToRoom(playerRoom, 'players_update', {
             players: playerRoom.players
           });
           
-          // Проверяем, все ли готовы (должно быть 2 игрока и оба ready)
           const allPlayersReady = playerRoom.players.length === 2 && 
                                    playerRoom.players.every(p => p.ready);
           
           if (allPlayersReady && !playerRoom.wordPhase) {
             playerRoom.wordPhase = true;
-            console.log(`Все готовы в комнате ${playerRoom.code}, начинаем фазу загадывания слов`);
+            console.log(`Все готовы в комнате ${playerRoom.code}`);
             
-            // Отправляем всем сообщение о начале фазы загадывания
             broadcastToRoom(playerRoom, 'all_ready', {
               message: 'Все готовы! Загадайте свои слова.'
             });
@@ -296,8 +307,15 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          if (!data.word || data.word.length !== 5 || !/^[А-ЯЁ]+$/i.test(data.word)) {
-            sendToClient(ws, 'error', { message: 'Неверное слово (5 русских букв)' });
+          // Проверка слова в зависимости от языка комнаты
+          const lang = playerRoom.lang;
+          const wordRegex = lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
+          
+          if (!data.word || data.word.length !== 5 || !wordRegex.test(data.word)) {
+            const msg = lang === 'ru' 
+              ? 'Неверное слово (5 русских букв)' 
+              : 'Invalid word (5 English letters)';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
@@ -313,29 +331,25 @@ wss.on('connection', (ws) => {
           player.wordSet = true;
           console.log(`${player.name} загадал слово в комнате ${playerRoom.code}`);
           
-          // Отправляем подтверждение этому игроку
           sendToClient(ws, 'word_set_status', {
             wordSet: true,
             players: playerRoom.players
           });
           
-          // Отправляем обновление всем
           broadcastToRoom(playerRoom, 'players_update', {
             players: playerRoom.players
           });
           
-          // Проверяем, оба ли загадали слова
           const bothWordsSet = playerRoom.players.length === 2 && 
                                playerRoom.players.every(p => p.wordSet);
           
           if (bothWordsSet && !playerRoom.gameStarted) {
             playerRoom.gameStarted = true;
             
-            // Случайно выбираем, кто ходит первым
             const firstTurn = Math.random() < 0.5 ? playerRoom.host : playerRoom.guest;
             playerRoom.currentTurn = firstTurn;
             
-            console.log(`Игра началась в комнате ${playerRoom.code}, первый ход: ${firstTurn}`);
+            console.log(`Игра началась в комнате ${playerRoom.code}`);
             
             const hostWs = clients.get(playerRoom.host);
             const guestWs = clients.get(playerRoom.guest);
@@ -358,7 +372,6 @@ wss.on('connection', (ws) => {
               message: 'Оба слова загаданы! БИТВА НАЧИНАЕТСЯ!'
             });
           } else {
-            // Сообщаем, кто уже загадал
             const wordSetPlayers = playerRoom.players.filter(p => p.wordSet);
             const waitingPlayers = playerRoom.players.filter(p => !p.wordSet);
             
@@ -404,8 +417,15 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          if (!data.guess || data.guess.length !== 5 || !/^[А-ЯЁ]+$/i.test(data.guess)) {
-            sendToClient(ws, 'error', { message: 'Неверное слово' });
+          // Проверка слова в зависимости от языка комнаты
+          const lang = playerRoom.lang;
+          const wordRegex = lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
+          
+          if (!data.guess || data.guess.length !== 5 || !wordRegex.test(data.guess)) {
+            const msg = lang === 'ru' 
+              ? 'Неверное слово (5 русских букв)' 
+              : 'Invalid word (5 English letters)';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
@@ -421,14 +441,12 @@ wss.on('connection', (ws) => {
           
           console.log(`${isHost ? 'Хост' : 'Гость'} угадывает: ${upperGuess}`);
           
-          // Отправляем результат угадывающему
           sendToClient(ws, 'guess_result', {
             guess: upperGuess,
             result,
             attempts: isHost ? playerRoom.hostAttempts : playerRoom.guestAttempts
           });
           
-          // Проверка на победу
           if (upperGuess === targetWord) {
             if (isHost) {
               playerRoom.hostGameOver = true;
@@ -446,8 +464,7 @@ wss.on('connection', (ws) => {
             const opponentWs = clients.get(isHost ? playerRoom.guest : playerRoom.host);
             if (opponentWs) {
               sendToClient(opponentWs, 'game_lost', {
-                message: 'Соперник угадал ваше слово! Поражение...',
-                opponentWord: upperGuess
+                message: 'Соперник угадал ваше слово! Поражение...'
               });
             }
             
@@ -456,7 +473,6 @@ wss.on('connection', (ws) => {
               winnerId: ws.id
             });
           } else {
-            // Проверка на исчерпание попыток
             const attempts = isHost ? playerRoom.hostAttempts : playerRoom.guestAttempts;
             if (attempts.length >= 6) {
               if (isHost) playerRoom.hostGameOver = true;
@@ -467,7 +483,6 @@ wss.on('connection', (ws) => {
                 word: targetWord
               });
               
-              // Проверяем, не закончилась ли игра у обоих
               if (playerRoom.hostGameOver && playerRoom.guestGameOver) {
                 broadcastToRoom(playerRoom, 'game_over', {
                   winner: null,
@@ -477,7 +492,6 @@ wss.on('connection', (ws) => {
             }
           }
           
-          // Передаем ход сопернику, если игра продолжается
           if (!playerRoom.hostGameOver || !playerRoom.guestGameOver) {
             if (playerRoom.hostGameOver) {
               playerRoom.currentTurn = playerRoom.guest;
@@ -493,7 +507,6 @@ wss.on('connection', (ws) => {
             }
           }
           
-          // Отправляем обновление сопернику
           const opponentId = isHost ? playerRoom.guest : playerRoom.host;
           const opponentWs = clients.get(opponentId);
           if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
@@ -520,7 +533,6 @@ wss.on('connection', (ws) => {
                   message: `${playerName} покинул комнату`
                 });
                 
-                // Сбрасываем состояние комнаты
                 room.gameStarted = false;
                 room.wordPhase = false;
                 room.hostWord = '';
@@ -551,7 +563,6 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     console.log(`Игрок отключился: ${ws.id}`);
     
-    // Удаляем игрока из всех комнат
     for (let [code, room] of rooms) {
       const playerIndex = room.players.findIndex(p => p.id === ws.id);
       if (playerIndex !== -1) {
