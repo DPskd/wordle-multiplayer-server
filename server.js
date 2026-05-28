@@ -19,7 +19,7 @@ const server = http.createServer((req, res) => {
   }
   
   res.writeHead(200);
-  res.end('Wordle Multiplayer Server v2');
+  res.end('Wordle Multiplayer Server v3');
 });
 
 const wss = new WebSocket.Server({ server });
@@ -97,8 +97,51 @@ function findRoomByPlayer(playerId) {
   return null;
 }
 
+// Очистка комнаты от игрока
+function removePlayerFromRoom(room, playerId) {
+  const playerIndex = room.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1) return null;
+  
+  const player = room.players[playerIndex];
+  room.players.splice(playerIndex, 1);
+  
+  // Если комната пуста - удаляем
+  if (room.players.length === 0) {
+    rooms.delete(room.code);
+    console.log(`[ROOM] ${room.code} удалена (нет игроков)`);
+    return null;
+  }
+  
+  // Если хост вышел - передаём хоста оставшемуся игроку
+  if (playerId === room.host) {
+    room.host = room.players[0].id;
+    room.guest = null;
+    console.log(`[ROOM] Новый хост в ${room.code}: ${room.host}`);
+  }
+  
+  // Сброс состояния игры
+  room.gameStarted = false;
+  room.wordPhase = false;
+  room.hostWord = '';
+  room.guestWord = '';
+  room.hostAttempts = [];
+  room.guestAttempts = [];
+  room.hostGameOver = false;
+  room.guestGameOver = false;
+  room.hostWon = false;
+  room.guestWon = false;
+  room.currentTurn = null;
+  room.players.forEach(p => {
+    p.ready = false;
+    p.wordSet = false;
+  });
+  
+  return player;
+}
+
 wss.on('connection', (ws) => {
   ws.id = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  ws.nickname = 'Player';
   clients.set(ws.id, ws);
   
   console.log(`[+] Игрок подключился: ${ws.id}`);
@@ -108,6 +151,18 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
+      
+      // Сохраняем никнейм при каждом сообщении
+      if (data.nickname) {
+        ws.nickname = data.nickname;
+        // Обновляем имя в комнате
+        const room = findRoomByPlayer(ws.id);
+        if (room) {
+          const player = room.players.find(p => p.id === ws.id);
+          if (player) player.name = data.nickname;
+        }
+      }
+      
       console.log(`[${ws.id}] ${data.type}`);
       
       switch (data.type) {
@@ -128,7 +183,7 @@ wss.on('connection', (ws) => {
             lang: data.lang || 'ru',
             multiMode: data.multiMode || 'async',
             isPrivate: data.isPrivate || false,
-            players: [{ id: ws.id, name: 'Игрок 1', ready: false, wordSet: false }],
+            players: [{ id: ws.id, name: ws.nickname || 'Игрок 1', ready: false, wordSet: false }],
             gameStarted: false,
             wordPhase: false,
             hostWord: '',
@@ -187,7 +242,7 @@ wss.on('connection', (ws) => {
           }
           
           room.guest = ws.id;
-          room.players.push({ id: ws.id, name: 'Игрок 2', ready: false, wordSet: false });
+          room.players.push({ id: ws.id, name: ws.nickname || 'Игрок 2', ready: false, wordSet: false });
           
           sendToClient(ws, 'room_joined', {
             code: room.code,
@@ -204,7 +259,7 @@ wss.on('connection', (ws) => {
               players: room.players
             });
           }
-          console.log(`[ROOM] Игрок вошёл в ${room.code}`);
+          console.log(`[ROOM] ${ws.nickname} вошёл в ${room.code}`);
           break;
         }
         
@@ -221,10 +276,10 @@ wss.on('connection', (ws) => {
               !room.gameStarted && 
               room.lang === myLang && 
               room.multiMode === myMode &&
-              !room.isPrivate  // Только открытые комнаты!
+              !room.isPrivate
             ) {
               room.guest = ws.id;
-              room.players.push({ id: ws.id, name: 'Игрок 2', ready: false, wordSet: false });
+              room.players.push({ id: ws.id, name: ws.nickname || 'Игрок 2', ready: false, wordSet: false });
               
               sendToClient(ws, 'room_joined', {
                 code: room.code,
@@ -241,7 +296,7 @@ wss.on('connection', (ws) => {
                 });
               }
               foundRoom = true;
-              console.log(`[QUICK] Присоединился к ${room.code}`);
+              console.log(`[QUICK] ${ws.nickname} присоединился к ${room.code}`);
               break;
             }
           }
@@ -256,7 +311,7 @@ wss.on('connection', (ws) => {
               lang: myLang,
               multiMode: myMode,
               isPrivate: false,
-              players: [{ id: ws.id, name: 'Игрок 1', ready: false, wordSet: false }],
+              players: [{ id: ws.id, name: ws.nickname || 'Игрок 1', ready: false, wordSet: false }],
               gameStarted: false,
               wordPhase: false,
               hostWord: '',
@@ -279,7 +334,7 @@ wss.on('connection', (ws) => {
               isPrivate: false,
               lang: room.lang
             });
-            console.log(`[QUICK] Создана комната ${code}`);
+            console.log(`[QUICK] Создана комната ${code} (${ws.nickname})`);
           }
           break;
         }
@@ -304,6 +359,60 @@ wss.on('connection', (ws) => {
           broadcastToRoom(room, 'room_type_changed', {
             isPrivate: room.isPrivate
           });
+          break;
+        }
+        
+        // ==================== КИК ИГРОКА ====================
+        case 'kick_player': {
+          const room = findRoomByPlayer(ws.id);
+          
+          if (!room) {
+            sendToClient(ws, 'error', { message: 'Вы не в комнате' });
+            return;
+          }
+          
+          if (ws.id !== room.host) {
+            sendToClient(ws, 'error', { message: 'Только хост может выгонять игроков' });
+            return;
+          }
+          
+          if (room.gameStarted) {
+            sendToClient(ws, 'error', { message: 'Нельзя выгнать во время игры' });
+            return;
+          }
+          
+          const kickedPlayer = room.players.find(p => p.id === data.playerId);
+          if (!kickedPlayer) {
+            sendToClient(ws, 'error', { message: 'Игрок не найден' });
+            return;
+          }
+          
+          if (kickedPlayer.id === ws.id) {
+            sendToClient(ws, 'error', { message: 'Нельзя выгнать самого себя' });
+            return;
+          }
+          
+          const kickedWs = clients.get(data.playerId);
+          
+          // Уведомляем выгнанного игрока
+          if (kickedWs) {
+            sendToClient(kickedWs, 'player_kicked', {
+              playerId: data.playerId,
+              code: room.code,
+              message: 'Вас выгнали из комнаты'
+            });
+          }
+          
+          // Удаляем игрока из комнаты
+          removePlayerFromRoom(room, data.playerId);
+          
+          // Уведомляем оставшихся
+          broadcastToRoom(room, 'player_kicked', {
+            playerId: data.playerId,
+            players: room.players
+          });
+          
+          console.log(`[KICK] ${kickedPlayer.name} выгнан из ${room.code}`);
           break;
         }
         
@@ -404,17 +513,22 @@ wss.on('connection', (ws) => {
             const hostWs = clients.get(room.host);
             const guestWs = clients.get(room.guest);
             
+            const opponentNicknameForHost = room.players.find(p => p.id !== room.host)?.name || 'Соперник';
+            const opponentNicknameForGuest = room.players.find(p => p.id !== room.guest)?.name || 'Соперник';
+            
             if (hostWs) {
               sendToClient(hostWs, 'game_started', {
                 targetWord: room.guestWord,
-                myTurn: room.currentTurn === room.host
+                myTurn: room.currentTurn === room.host,
+                opponentNickname: opponentNicknameForHost
               });
             }
             
             if (guestWs) {
               sendToClient(guestWs, 'game_started', {
                 targetWord: room.hostWord,
-                myTurn: room.currentTurn === room.guest
+                myTurn: room.currentTurn === room.guest,
+                opponentNickname: opponentNicknameForGuest
               });
             }
             
@@ -447,7 +561,8 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          if (room.currentTurn !== ws.id) {
+          // В live режиме не проверяем очерёдность
+          if (room.multiMode === 'async' && room.currentTurn !== ws.id) {
             sendToClient(ws, 'error', { message: 'Не ваш ход' });
             return;
           }
@@ -471,7 +586,7 @@ wss.on('connection', (ws) => {
             room.guestAttempts.push({ word: upperGuess, result });
           }
           
-          console.log(`[GUESS] ${isHost ? 'Хост' : 'Гость'}: ${upperGuess}`);
+          console.log(`[GUESS] ${isHost ? 'Хост' : 'Гость'}: ${upperGuess} -> ${result.join(',')}`);
           
           sendToClient(ws, 'guess_result', {
             guess: upperGuess,
@@ -489,48 +604,62 @@ wss.on('connection', (ws) => {
               room.guestWon = true;
             }
             
+            const winnerName = isHost 
+              ? (room.players.find(p => p.id === room.host)?.name || 'Игрок 1')
+              : (room.players.find(p => p.id === room.guest)?.name || 'Игрок 2');
+            
+            // Уведомление победителю
             sendToClient(ws, 'game_won', { 
               word: targetWord,
-              message: 'Вы угадали слово! ПОБЕДА!'
+              winnerId: ws.id,
+              winnerNickname: winnerName
             });
             
+            // Уведомление проигравшему
             const opponentWs = clients.get(isHost ? room.guest : room.host);
             if (opponentWs) {
               sendToClient(opponentWs, 'game_lost', {
-                message: 'Соперник угадал ваше слово!',
+                winnerId: ws.id,
+                winnerNickname: winnerName,
                 word: isHost ? room.hostWord : room.guestWord
               });
             }
             
             broadcastToRoom(room, 'game_over', {
-              winner: isHost ? 'Игрок 1' : 'Игрок 2',
               winnerId: ws.id,
+              winnerNickname: winnerName,
               word: targetWord
             });
-          } else {
-            // Исчерпание попыток
-            const attempts = isHost ? room.hostAttempts : room.guestAttempts;
-            if (attempts.length >= 6) {
-              if (isHost) room.hostGameOver = true;
-              else room.guestGameOver = true;
-              
-              sendToClient(ws, 'game_lost', {
-                message: 'Попытки исчерпаны',
-                word: targetWord
+            
+            return;
+          }
+          
+          // Исчерпание попыток у текущего игрока
+          const attempts = isHost ? room.hostAttempts : room.guestAttempts;
+          if (attempts.length >= 6) {
+            if (isHost) room.hostGameOver = true;
+            else room.guestGameOver = true;
+            
+            sendToClient(ws, 'game_lost', {
+              message: 'Попытки исчерпаны',
+              word: targetWord,
+              winnerId: isHost ? room.guest : room.host,
+              winnerNickname: room.players.find(p => p.id === (isHost ? room.guest : room.host))?.name || 'Соперник'
+            });
+            
+            // Если оба игрока исчерпали попытки
+            if (room.hostGameOver && room.guestGameOver) {
+              broadcastToRoom(room, 'game_over', {
+                winnerId: null,
+                message: 'Ничья! Оба не угадали.',
+                word: null
               });
-              
-              if (room.hostGameOver && room.guestGameOver) {
-                broadcastToRoom(room, 'game_over', {
-                  winner: null,
-                  message: 'Ничья! Оба не угадали.',
-                  word: null
-                });
-              }
+              return;
             }
           }
           
-          // Передача хода
-          if (!room.hostGameOver || !room.guestGameOver) {
+          // Передача хода (только в async режиме)
+          if (room.multiMode === 'async') {
             if (room.hostGameOver) {
               room.currentTurn = room.guest;
             } else if (room.guestGameOver) {
@@ -561,35 +690,14 @@ wss.on('connection', (ws) => {
           const room = findRoomByPlayer(ws.id);
           
           if (room) {
-            const playerIndex = room.players.findIndex(p => p.id === ws.id);
-            if (playerIndex !== -1) {
-              const playerName = room.players[playerIndex].name;
-              room.players.splice(playerIndex, 1);
-              console.log(`[LEAVE] ${playerName} покинул ${room.code}`);
+            const player = removePlayerFromRoom(room, ws.id);
+            
+            if (player) {
+              console.log(`[LEAVE] ${player.name} покинул ${room.code}`);
               
-              if (room.players.length === 0) {
-                rooms.delete(room.code);
-                console.log(`[ROOM] ${room.code} удалена`);
-              } else {
-                // Сброс состояния
-                room.gameStarted = false;
-                room.wordPhase = false;
-                room.hostWord = '';
-                room.guestWord = '';
-                room.hostAttempts = [];
-                room.guestAttempts = [];
-                room.hostGameOver = false;
-                room.guestGameOver = false;
-                room.hostWon = false;
-                room.guestWon = false;
-                room.currentTurn = null;
-                room.players.forEach(p => {
-                  p.ready = false;
-                  p.wordSet = false;
-                });
-                
+              if (room.players.length > 0) {
                 broadcastToRoom(room, 'player_left', {
-                  message: `${playerName} покинул комнату`,
+                  message: `${player.name} покинул комнату`,
                   players: room.players
                 });
               }
@@ -602,45 +710,22 @@ wss.on('connection', (ws) => {
           console.log(`[?] Неизвестный тип: ${data.type}`);
       }
     } catch (error) {
-      console.error('Ошибка:', error);
+      console.error('Ошибка обработки сообщения:', error);
     }
   });
 
   ws.on('close', () => {
-    console.log(`[-] Игрок отключился: ${ws.id}`);
+    console.log(`[-] Игрок отключился: ${ws.id} (${ws.nickname})`);
     
     const room = findRoomByPlayer(ws.id);
     if (room) {
-      const playerIndex = room.players.findIndex(p => p.id === ws.id);
-      if (playerIndex !== -1) {
-        const playerName = room.players[playerIndex].name;
-        room.players.splice(playerIndex, 1);
-        
-        if (room.players.length === 0) {
-          rooms.delete(room.code);
-          console.log(`[ROOM] ${room.code} удалена (все вышли)`);
-        } else {
-          room.gameStarted = false;
-          room.wordPhase = false;
-          room.hostWord = '';
-          room.guestWord = '';
-          room.hostAttempts = [];
-          room.guestAttempts = [];
-          room.hostGameOver = false;
-          room.guestGameOver = false;
-          room.hostWon = false;
-          room.guestWon = false;
-          room.currentTurn = null;
-          room.players.forEach(p => {
-            p.ready = false;
-            p.wordSet = false;
-          });
-          
-          broadcastToRoom(room, 'player_left', {
-            message: `${playerName} отключился`,
-            players: room.players
-          });
-        }
+      const player = removePlayerFromRoom(room, ws.id);
+      
+      if (player && room.players.length > 0) {
+        broadcastToRoom(room, 'player_left', {
+          message: `${player.name} отключился`,
+          players: room.players
+        });
       }
     }
     
