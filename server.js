@@ -19,7 +19,7 @@ const server = http.createServer((req, res) => {
   }
   
   res.writeHead(200);
-  res.end('Wordle Multiplayer Server v4');
+  res.end('Wordle Multiplayer Server v5');
 });
 
 const wss = new WebSocket.Server({ server });
@@ -27,7 +27,7 @@ const wss = new WebSocket.Server({ server });
 const rooms = new Map();
 const clients = new Map();
 
-// Списки слов
+// Word lists
 const WORDS_RU = 'АРБУЗ,БАНКА,ВЕТЕР,ГОРОД,ДОЖДЬ,ЖАБРА,ЗЕБРА,ИГРОК,КАРТА,ЛОДКА,МОРОЗ,НОСОК,ПАРУС,РОМАН,САХАР,ТУМАН,ФАКЕЛ,ЦАПЛЯ,ЧАШКА,ШТОРМ,ЩЕНОК,ЭКРАН,ЮНОША,ЯБЕДА,ПИРОГ,ТОЧКА,РУЧКА,КНИГА,КОШКА,МЫШКА,ЗЕМЛЯ,ВОЛНА,ГРОЗА,ЗАКАТ,ОГОНЬ,БЕРЕГ,ЗАМОК,ЛИМОН,НИТКА,РУБЛЬ,СМЕНА,ТРОПА,ХОЛОД,ГОРКА,ИСКРА,СОСНА,ТОПОР,ЗВЕЗД,КЛЮЧИ,ПОЛЕТ,МЕСЯЦ,БРОВИ,МЕЧТА,ОТВЕТ,СЛОВО,ЧИСЛО,МЕСТО,ВРЕМЯ,ВЕЧЕР,УТРОМ,МЫСЛЬ'.split(',').filter(w => w.length === 5);
 const WORDS_EN = 'ABOUT,ABOVE,ACTOR,ADMIT,ADOPT,ADULT,AFTER,AGAIN,AGENT,ALBUM,ALERT,ALIKE,ALIVE,ALLOW,ALONE,ANGEL,ANGRY,APPLE,ARENA,ARGUE,ARISE,ARROW,ASIDE,AVOID,AWARD,BASIC,BEACH,BEGAN,BEGIN,BEING,BELOW,BIRTH,BLACK,BLADE,BLAME,BLANK,BLAST,BLAZE,BLEED,BLESS,BLIND,BLOCK,BLOOD,BOARD,BOOST,BRAIN,BRAND,BRAVE,BREAK,BREED,BRICK,BRIEF,BRING,BROAD,BROWN,BRUSH,BUILD,BURST,CANDY,CARRY,CAUSE,CHAIN,CHAIR,CHAOS,CHARM,CHEAP,CHECK,CHESS,CHEST,CHILD,CLEAN,CLEAR,CLIMB,CLOSE,CLOUD,COAST,COLOR,CORAL,COULD,COUNT,COURT,COVER,CRACK,CRAFT,CRASH,CRAZY,CREAM,CRIME,CROSS,CROWD,CROWN,CRUSH,CURVE,CYCLE,DAILY,DANCE,DEATH,DELAY,DEVIL,DIARY,DIRTY,DOING,DOUBT,DOUGH,DRAFT,DRAMA,DREAM,DRESS,DRINK,DRIVE,DRONE,EARLY,EARTH,EIGHT,ELECT,ELITE,EMPTY,ENEMY,ENJOY,ENTER,EQUAL,ERROR,EVENT,EVERY,EXACT,EXIST,EXTRA,FAITH,FALSE,FAULT,FENCE,FEVER,FIELD,FIGHT,FINAL,FIRST,FLAME,FLASH,FLOAT,FLOOR,FLUID,FOCUS,FORCE,FORTH,FOUND,FRAME,FRESH,FRONT,FROST,FRUIT,FULLY,FUNNY,GHOST,GIANT,GIVEN,GLASS,GLOBE,GLORY,GOING,GRACE,GRADE,GRAIN,GRAND,GRANT,GRASS,GRAVE,GREAT,GREEN,GROUP,GUARD,GUESS,GUEST,GUIDE,HAPPY,HEART,HEAVY,HELLO,HONEY,HONOR,HORSE,HOTEL,HOUSE,HUMAN,HUMOR,HURRY,IMAGE,INDEX,INNER,INPUT,ISSUE,JEWEL,JOINT,JUDGE,JUICE,KNOWN,LABEL,LARGE,LATER,LAUGH,LAYER,LEARN,LEAVE,LEGAL,LEVEL,LIGHT,LIMIT,LOCAL,LOGIC,LOOSE,LUNCH,MAGIC,MAJOR,MARCH,MATCH,MEDIA,METAL,MIGHT,MINOR,MINUS,MIXED,MODEL,MONEY,MONTH,MOUNT,MOUSE,MOUTH,MOVIE,MUSIC,NERVE,NEVER,NIGHT,NOISE,NORTH,NOVEL,NURSE,OCEAN,OFFER,OFTEN,OLIVE,ORDER,OTHER,OUGHT,OUTER,OWNER,PAINT,PANEL,PAPER,PARTY,PEACE,PEARL,PHASE,PHONE,PHOTO,PIANO,PIECE,PILOT,PIXEL,PLACE,PLAIN,PLANE,PLANT,PLATE,POINT,POWER,PRESS,PRICE,PRIDE,PRIME,PRIZE,PROOF,PROUD,PROVE,PUPIL,QUEEN,QUEST,QUICK,QUIET,QUITE,RADIO,RAISE,RANGE,RAPID,REACH,REACT,READY,REALM,REIGN,REPLY,RIGHT,RIVER,ROBOT,ROCKY,ROUGH,ROUND,ROUTE,ROYAL,RULER,RURAL,SAINT,SALAD,SAUCE,SCALE,SCENE,SCOPE,SCORE,SENSE,SERVE,SEVEN,SHADE,SHAKE,SHALL,SHAME,SHAPE,SHARE,SHARP,SHELF,SHELL,SHIFT,SHINE,SHIRT,SHOCK,SHOOT,SHORT,SHOUT,SIGHT,SINCE,SIXTH,SIXTY,SKILL,SLAVE,SLEEP,SLICE,SLIDE,SMART,SMELL,SMILE,SMOKE,SNAKE,SOLAR,SOLID,SOLVE,SORRY,SOUTH,SPACE,SPARE,SPARK,SPEAK,SPEED,SPEND,SPILL,SPINE,SPLIT,SPORT,SPRAY,SQUAD,STACK,STAGE,STAND,START,STATE,STEAM,STEEL,STICK,STILL,STOCK,STONE,STORE,STORM,STORY,STUDY,STYLE,SUGAR,SUPER,SWEAR,SWEEP,SWEET,SWIFT,SWING,SWORD,TABLE,TASTE,TEACH,THANK,THEIR,THEME,THERE,THICK,THING,THINK,THIRD,THOSE,THREE,THROW,TIGHT,TIRED,TITLE,TODAY,TOKEN,TOOTH,TOTAL,TOUCH,TOUGH,TOWER,TRACK,TRADE,TRAIL,TRAIN,TREAT,TREND,TRIAL,TRIBE,TRICK,TROOP,TRUCK,TRULY,TRUST,TRUTH,TWICE,TWIST,UNDER,UNION,UNITY,UNTIL,UPPER,UPSET,URBAN,USUAL,VALID,VALUE,VIDEO,VIRAL,VIRUS,VISIT,VITAL,VOCAL,VOICE,WATCH,WATER,WEIGH,WHEAT,WHEEL,WHERE,WHICH,WHILE,WHITE,WHOLE,WHOSE,WOMAN,WOMEN,WORLD,WORRY,WORSE,WORST,WORTH,WOULD,WOUND,WRITE,WRONG,WROTE,YACHT,YIELD,YOUNG,YOUTH,ZEBRA'.split(',').filter(w => w.length === 5);
 
@@ -67,7 +67,6 @@ function evaluateGuess(guess, target) {
   const guessLetters = guess.split('');
   const matched = Array(5).fill(false);
   
-  // First pass: correct letters
   for (let i = 0; i < 5; i++) {
     if (guessLetters[i] === targetLetters[i]) {
       result[i] = 'correct';
@@ -75,7 +74,6 @@ function evaluateGuess(guess, target) {
     }
   }
   
-  // Second pass: present letters
   for (let i = 0; i < 5; i++) {
     if (result[i] === 'correct') continue;
     const letter = guessLetters[i];
@@ -89,7 +87,6 @@ function evaluateGuess(guess, target) {
   return result;
 }
 
-// Find room by player ID
 function findRoomByPlayer(playerId) {
   for (let [code, room] of rooms) {
     if (room.players.find(p => p.id === playerId)) {
@@ -99,7 +96,6 @@ function findRoomByPlayer(playerId) {
   return null;
 }
 
-// Remove player from room
 function removePlayerFromRoom(room, playerId) {
   const playerIndex = room.players.findIndex(p => p.id === playerId);
   if (playerIndex === -1) return null;
@@ -107,14 +103,12 @@ function removePlayerFromRoom(room, playerId) {
   const player = room.players[playerIndex];
   room.players.splice(playerIndex, 1);
   
-  // If room is empty - delete it
   if (room.players.length === 0) {
     rooms.delete(room.code);
     console.log(`[ROOM] ${room.code} deleted (no players)`);
     return null;
   }
   
-  // If host left - transfer host to remaining player
   if (playerId === room.host) {
     room.host = room.players[0].id;
     room.guest = null;
@@ -141,17 +135,9 @@ function removePlayerFromRoom(room, playerId) {
   return player;
 }
 
-// Check if all players in room have set their words
-function checkBothWordsSet(room) {
-  if (room.players.length !== 2) return false;
-  return room.players.every(p => p.wordSet);
-}
-
-// Start the game
 function startGame(room) {
   room.gameStarted = true;
   
-  // Random first turn
   const firstTurn = Math.random() < 0.5 ? room.host : room.guest;
   room.currentTurn = firstTurn;
   
@@ -160,14 +146,16 @@ function startGame(room) {
   const hostWs = clients.get(room.host);
   const guestWs = clients.get(room.guest);
   
-  const opponentNicknameForHost = room.players.find(p => p.id !== room.host)?.name || 'Opponent';
-  const opponentNicknameForGuest = room.players.find(p => p.id !== room.guest)?.name || 'Opponent';
+  const hostPlayer = room.players.find(p => p.id === room.host);
+  const guestPlayer = room.players.find(p => p.id === room.guest);
   
   if (hostWs) {
     sendToClient(hostWs, 'game_started', {
       targetWord: room.guestWord,
       myTurn: room.currentTurn === room.host,
-      opponentNickname: opponentNicknameForHost
+      opponentNickname: guestPlayer?.name || 'Opponent',
+      opponentAvatar: guestPlayer?.avatarUrl || '',
+      opponentColor: guestPlayer?.activeColor || ''
     });
   }
   
@@ -175,7 +163,9 @@ function startGame(room) {
     sendToClient(guestWs, 'game_started', {
       targetWord: room.hostWord,
       myTurn: room.currentTurn === room.guest,
-      opponentNickname: opponentNicknameForGuest
+      opponentNickname: hostPlayer?.name || 'Opponent',
+      opponentAvatar: hostPlayer?.avatarUrl || '',
+      opponentColor: hostPlayer?.activeColor || ''
     });
   }
   
@@ -184,10 +174,38 @@ function startGame(room) {
   });
 }
 
+// Update player info in room
+function updatePlayerInfo(ws, data) {
+  const room = findRoomByPlayer(ws.id);
+  if (!room) return;
+  
+  const player = room.players.find(p => p.id === ws.id);
+  if (!player) return;
+  
+  if (data.nickname) {
+    ws.nickname = data.nickname;
+    player.name = data.nickname;
+  }
+  if (data.avatarUrl !== undefined) {
+    ws.avatarUrl = data.avatarUrl;
+    player.avatarUrl = data.avatarUrl;
+  }
+  if (data.activeColor !== undefined) {
+    ws.activeColor = data.activeColor;
+    player.activeColor = data.activeColor;
+  }
+  
+  // Broadcast updated player list to room
+  broadcastToRoom(room, 'players_update', {
+    players: room.players
+  });
+}
+
 wss.on('connection', (ws) => {
   ws.id = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   ws.nickname = 'Player';
   ws.avatarUrl = '';
+  ws.activeColor = '';
   clients.set(ws.id, ws);
   
   console.log(`[+] Player connected: ${ws.id}`);
@@ -198,22 +216,8 @@ wss.on('connection', (ws) => {
     try {
       const data = JSON.parse(message);
       
-      // Update nickname and avatar on every message
-      if (data.nickname) {
-        ws.nickname = data.nickname;
-        // Update name in room
-        const room = findRoomByPlayer(ws.id);
-        if (room) {
-          const player = room.players.find(p => p.id === ws.id);
-          if (player) {
-            player.name = data.nickname;
-            player.avatarUrl = data.avatarUrl || '';
-          }
-        }
-      }
-      if (data.avatarUrl) {
-        ws.avatarUrl = data.avatarUrl;
-      }
+      // Always update player info
+      updatePlayerInfo(ws, data);
       
       console.log(`[${ws.id}] ${data.type}`);
       
@@ -221,7 +225,6 @@ wss.on('connection', (ws) => {
         
         // ==================== CREATE ROOM ====================
         case 'create_room': {
-          // Check if player is already in a room
           if (findRoomByPlayer(ws.id)) {
             sendToClient(ws, 'error', { message: 'You are already in a room' });
             return;
@@ -235,7 +238,14 @@ wss.on('connection', (ws) => {
             lang: data.lang || 'ru',
             multiMode: data.multiMode || 'async',
             isPrivate: data.isPrivate || false,
-            players: [{ id: ws.id, name: ws.nickname || 'Player 1', avatarUrl: ws.avatarUrl || '', ready: false, wordSet: false }],
+            players: [{ 
+              id: ws.id, 
+              name: ws.nickname || 'Player 1', 
+              avatarUrl: ws.avatarUrl || '', 
+              activeColor: ws.activeColor || '',
+              ready: false, 
+              wordSet: false 
+            }],
             gameStarted: false,
             wordPhase: false,
             hostWord: '',
@@ -276,7 +286,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Language check
           const joinLang = data.lang || 'ru';
           if (joinLang !== room.lang) {
             const msg = joinLang === 'ru' 
@@ -286,7 +295,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Check if player is in another room
           const existingRoom = findRoomByPlayer(ws.id);
           if (existingRoom && existingRoom !== room) {
             sendToClient(ws, 'error', { message: 'You are already in another room' });
@@ -298,6 +306,7 @@ wss.on('connection', (ws) => {
             id: ws.id, 
             name: ws.nickname || 'Player 2', 
             avatarUrl: ws.avatarUrl || '', 
+            activeColor: ws.activeColor || '',
             ready: false, 
             wordSet: false 
           });
@@ -310,7 +319,6 @@ wss.on('connection', (ws) => {
             lang: room.lang
           });
           
-          // Notify host
           const hostWs = clients.get(room.host);
           if (hostWs) {
             sendToClient(hostWs, 'player_joined', {
@@ -327,7 +335,6 @@ wss.on('connection', (ws) => {
           const myMode = data.multiMode || 'async';
           let foundRoom = false;
           
-          // Find open room with same language and mode
           for (let [code, room] of rooms) {
             if (
               room.players.length < 2 && 
@@ -341,6 +348,7 @@ wss.on('connection', (ws) => {
                 id: ws.id, 
                 name: ws.nickname || 'Player 2', 
                 avatarUrl: ws.avatarUrl || '', 
+                activeColor: ws.activeColor || '',
                 ready: false, 
                 wordSet: false 
               });
@@ -366,7 +374,6 @@ wss.on('connection', (ws) => {
           }
           
           if (!foundRoom) {
-            // Create new open room
             const code = generateRoomCode();
             const room = {
               code,
@@ -375,7 +382,14 @@ wss.on('connection', (ws) => {
               lang: myLang,
               multiMode: myMode,
               isPrivate: false,
-              players: [{ id: ws.id, name: ws.nickname || 'Player 1', avatarUrl: ws.avatarUrl || '', ready: false, wordSet: false }],
+              players: [{ 
+                id: ws.id, 
+                name: ws.nickname || 'Player 1', 
+                avatarUrl: ws.avatarUrl || '', 
+                activeColor: ws.activeColor || '',
+                ready: false, 
+                wordSet: false 
+              }],
               gameStarted: false,
               wordPhase: false,
               hostWord: '',
@@ -458,7 +472,6 @@ wss.on('connection', (ws) => {
           
           const kickedWs = clients.get(data.playerId);
           
-          // Notify kicked player
           if (kickedWs) {
             sendToClient(kickedWs, 'player_kicked', {
               playerId: data.playerId,
@@ -467,10 +480,8 @@ wss.on('connection', (ws) => {
             });
           }
           
-          // Remove player from room
           removePlayerFromRoom(room, data.playerId);
           
-          // Notify remaining players
           broadcastToRoom(room, 'player_kicked', {
             playerId: data.playerId,
             players: room.players
@@ -489,11 +500,13 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Broadcast chat message to all players in room
+          // Send chat with player's active color
           broadcastToRoom(room, 'chat_message', {
             sender: ws.nickname || 'Player',
             message: data.message,
-            room: data.room || 'lobby'
+            room: data.room || 'lobby',
+            activeColor: ws.activeColor || '',
+            senderId: ws.id
           });
           break;
         }
@@ -522,7 +535,6 @@ wss.on('connection', (ws) => {
             players: room.players
           });
           
-          // Check if all players are ready
           const allReady = room.players.length === 2 && room.players.every(p => p.ready);
           
           if (allReady && !room.wordPhase) {
@@ -550,7 +562,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Validate word
           const wordRegex = room.lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
           
           if (!data.word || data.word.length !== 5 || !wordRegex.test(data.word)) {
@@ -580,8 +591,7 @@ wss.on('connection', (ws) => {
             players: room.players
           });
           
-          // Check if both words are set
-          if (checkBothWordsSet(room) && !room.gameStarted) {
+          if (room.players.length === 2 && room.players.every(p => p.wordSet) && !room.gameStarted) {
             startGame(room);
           } else {
             const waiting = room.players.filter(p => !p.wordSet);
@@ -609,7 +619,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // In async mode, check turn order
           if (room.multiMode === 'async' && room.currentTurn !== ws.id) {
             sendToClient(ws, 'error', { message: 'Not your turn' });
             return;
@@ -652,23 +661,23 @@ wss.on('connection', (ws) => {
               room.guestWon = true;
             }
             
-            const winnerName = isHost 
-              ? (room.players.find(p => p.id === room.host)?.name || 'Player 1')
-              : (room.players.find(p => p.id === room.guest)?.name || 'Player 2');
+            const winnerPlayer = room.players.find(p => p.id === ws.id);
+            const loserPlayer = room.players.find(p => p.id !== ws.id);
+            const winnerName = winnerPlayer?.name || 'Player';
             
-            // Notify winner
             sendToClient(ws, 'game_won', { 
               word: targetWord,
               winnerId: ws.id,
-              winnerNickname: winnerName
+              winnerNickname: winnerName,
+              winnerColor: winnerPlayer?.activeColor || ''
             });
             
-            // Notify loser
             const opponentWs = clients.get(isHost ? room.guest : room.host);
             if (opponentWs) {
               sendToClient(opponentWs, 'game_lost', {
                 winnerId: ws.id,
                 winnerNickname: winnerName,
+                winnerColor: winnerPlayer?.activeColor || '',
                 word: isHost ? room.hostWord : room.guestWord
               });
             }
@@ -676,6 +685,7 @@ wss.on('connection', (ws) => {
             broadcastToRoom(room, 'game_over', {
               winnerId: ws.id,
               winnerNickname: winnerName,
+              winnerColor: winnerPlayer?.activeColor || '',
               word: targetWord
             });
             
@@ -688,18 +698,19 @@ wss.on('connection', (ws) => {
             if (isHost) room.hostGameOver = true;
             else room.guestGameOver = true;
             
-            const loserName = room.players.find(p => p.id === ws.id)?.name || 'Player';
+            const loserPlayer = room.players.find(p => p.id === ws.id);
             const opponentId = isHost ? room.guest : room.host;
-            const opponentName = room.players.find(p => p.id === opponentId)?.name || 'Opponent';
+            const opponentPlayer = room.players.find(p => p.id === opponentId);
+            const opponentName = opponentPlayer?.name || 'Opponent';
             
             sendToClient(ws, 'game_lost', {
               message: 'Out of attempts',
               word: targetWord,
               winnerId: opponentId,
-              winnerNickname: opponentName
+              winnerNickname: opponentName,
+              winnerColor: opponentPlayer?.activeColor || ''
             });
             
-            // If both players exhausted attempts
             if (room.hostGameOver && room.guestGameOver) {
               broadcastToRoom(room, 'game_over', {
                 winnerId: null,
