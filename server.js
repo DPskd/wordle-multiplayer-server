@@ -18,8 +18,18 @@ const server = http.createServer((req, res) => {
     return;
   }
   
+  if (req.url === '/stats') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      rooms: rooms.size,
+      players: clients.size,
+      activeGames: Array.from(rooms.values()).filter(r => r.gameStarted).length
+    }));
+    return;
+  }
+  
   res.writeHead(200);
-  res.end('Wordle Multiplayer Server v5');
+  res.end('Wordle Multiplayer Server v6');
 });
 
 const wss = new WebSocket.Server({ server });
@@ -27,9 +37,49 @@ const wss = new WebSocket.Server({ server });
 const rooms = new Map();
 const clients = new Map();
 
-// Word lists
+// Anti-spam
+const messageTimestamps = new Map();
+const MESSAGE_COOLDOWN = 500; // ms between messages
+const MAX_MESSAGES_PER_SECOND = 3;
+
+// ==================== WORD LISTS ====================
 const WORDS_RU = 'АРБУЗ,БАНКА,ВЕТЕР,ГОРОД,ДОЖДЬ,ЖАБРА,ЗЕБРА,ИГРОК,КАРТА,ЛОДКА,МОРОЗ,НОСОК,ПАРУС,РОМАН,САХАР,ТУМАН,ФАКЕЛ,ЦАПЛЯ,ЧАШКА,ШТОРМ,ЩЕНОК,ЭКРАН,ЮНОША,ЯБЕДА,ПИРОГ,ТОЧКА,РУЧКА,КНИГА,КОШКА,МЫШКА,ЗЕМЛЯ,ВОЛНА,ГРОЗА,ЗАКАТ,ОГОНЬ,БЕРЕГ,ЗАМОК,ЛИМОН,НИТКА,РУБЛЬ,СМЕНА,ТРОПА,ХОЛОД,ГОРКА,ИСКРА,СОСНА,ТОПОР,ЗВЕЗД,КЛЮЧИ,ПОЛЕТ,МЕСЯЦ,БРОВИ,МЕЧТА,ОТВЕТ,СЛОВО,ЧИСЛО,МЕСТО,ВРЕМЯ,ВЕЧЕР,УТРОМ,МЫСЛЬ'.split(',').filter(w => w.length === 5);
 const WORDS_EN = 'ABOUT,ABOVE,ACTOR,ADMIT,ADOPT,ADULT,AFTER,AGAIN,AGENT,ALBUM,ALERT,ALIKE,ALIVE,ALLOW,ALONE,ANGEL,ANGRY,APPLE,ARENA,ARGUE,ARISE,ARROW,ASIDE,AVOID,AWARD,BASIC,BEACH,BEGAN,BEGIN,BEING,BELOW,BIRTH,BLACK,BLADE,BLAME,BLANK,BLAST,BLAZE,BLEED,BLESS,BLIND,BLOCK,BLOOD,BOARD,BOOST,BRAIN,BRAND,BRAVE,BREAK,BREED,BRICK,BRIEF,BRING,BROAD,BROWN,BRUSH,BUILD,BURST,CANDY,CARRY,CAUSE,CHAIN,CHAIR,CHAOS,CHARM,CHEAP,CHECK,CHESS,CHEST,CHILD,CLEAN,CLEAR,CLIMB,CLOSE,CLOUD,COAST,COLOR,CORAL,COULD,COUNT,COURT,COVER,CRACK,CRAFT,CRASH,CRAZY,CREAM,CRIME,CROSS,CROWD,CROWN,CRUSH,CURVE,CYCLE,DAILY,DANCE,DEATH,DELAY,DEVIL,DIARY,DIRTY,DOING,DOUBT,DOUGH,DRAFT,DRAMA,DREAM,DRESS,DRINK,DRIVE,DRONE,EARLY,EARTH,EIGHT,ELECT,ELITE,EMPTY,ENEMY,ENJOY,ENTER,EQUAL,ERROR,EVENT,EVERY,EXACT,EXIST,EXTRA,FAITH,FALSE,FAULT,FENCE,FEVER,FIELD,FIGHT,FINAL,FIRST,FLAME,FLASH,FLOAT,FLOOR,FLUID,FOCUS,FORCE,FORTH,FOUND,FRAME,FRESH,FRONT,FROST,FRUIT,FULLY,FUNNY,GHOST,GIANT,GIVEN,GLASS,GLOBE,GLORY,GOING,GRACE,GRADE,GRAIN,GRAND,GRANT,GRASS,GRAVE,GREAT,GREEN,GROUP,GUARD,GUESS,GUEST,GUIDE,HAPPY,HEART,HEAVY,HELLO,HONEY,HONOR,HORSE,HOTEL,HOUSE,HUMAN,HUMOR,HURRY,IMAGE,INDEX,INNER,INPUT,ISSUE,JEWEL,JOINT,JUDGE,JUICE,KNOWN,LABEL,LARGE,LATER,LAUGH,LAYER,LEARN,LEAVE,LEGAL,LEVEL,LIGHT,LIMIT,LOCAL,LOGIC,LOOSE,LUNCH,MAGIC,MAJOR,MARCH,MATCH,MEDIA,METAL,MIGHT,MINOR,MINUS,MIXED,MODEL,MONEY,MONTH,MOUNT,MOUSE,MOUTH,MOVIE,MUSIC,NERVE,NEVER,NIGHT,NOISE,NORTH,NOVEL,NURSE,OCEAN,OFFER,OFTEN,OLIVE,ORDER,OTHER,OUGHT,OUTER,OWNER,PAINT,PANEL,PAPER,PARTY,PEACE,PEARL,PHASE,PHONE,PHOTO,PIANO,PIECE,PILOT,PIXEL,PLACE,PLAIN,PLANE,PLANT,PLATE,POINT,POWER,PRESS,PRICE,PRIDE,PRIME,PRIZE,PROOF,PROUD,PROVE,PUPIL,QUEEN,QUEST,QUICK,QUIET,QUITE,RADIO,RAISE,RANGE,RAPID,REACH,REACT,READY,REALM,REIGN,REPLY,RIGHT,RIVER,ROBOT,ROCKY,ROUGH,ROUND,ROUTE,ROYAL,RULER,RURAL,SAINT,SALAD,SAUCE,SCALE,SCENE,SCOPE,SCORE,SENSE,SERVE,SEVEN,SHADE,SHAKE,SHALL,SHAME,SHAPE,SHARE,SHARP,SHELF,SHELL,SHIFT,SHINE,SHIRT,SHOCK,SHOOT,SHORT,SHOUT,SIGHT,SINCE,SIXTH,SIXTY,SKILL,SLAVE,SLEEP,SLICE,SLIDE,SMART,SMELL,SMILE,SMOKE,SNAKE,SOLAR,SOLID,SOLVE,SORRY,SOUTH,SPACE,SPARE,SPARK,SPEAK,SPEED,SPEND,SPILL,SPINE,SPLIT,SPORT,SPRAY,SQUAD,STACK,STAGE,STAND,START,STATE,STEAM,STEEL,STICK,STILL,STOCK,STONE,STORE,STORM,STORY,STUDY,STYLE,SUGAR,SUPER,SWEAR,SWEEP,SWEET,SWIFT,SWING,SWORD,TABLE,TASTE,TEACH,THANK,THEIR,THEME,THERE,THICK,THING,THINK,THIRD,THOSE,THREE,THROW,TIGHT,TIRED,TITLE,TODAY,TOKEN,TOOTH,TOTAL,TOUCH,TOUGH,TOWER,TRACK,TRADE,TRAIL,TRAIN,TREAT,TREND,TRIAL,TRIBE,TRICK,TROOP,TRUCK,TRULY,TRUST,TRUTH,TWICE,TWIST,UNDER,UNION,UNITY,UNTIL,UPPER,UPSET,URBAN,USUAL,VALID,VALUE,VIDEO,VIRAL,VIRUS,VISIT,VITAL,VOCAL,VOICE,WATCH,WATER,WEIGH,WHEAT,WHEEL,WHERE,WHICH,WHILE,WHITE,WHOLE,WHOSE,WOMAN,WOMEN,WORLD,WORRY,WORSE,WORST,WORTH,WOULD,WOUND,WRITE,WRONG,WROTE,YACHT,YIELD,YOUNG,YOUTH,ZEBRA'.split(',').filter(w => w.length === 5);
+
+// Banned word patterns for server-side validation
+const BANNED_PATTERNS_RU = [
+  /х[уy]й/i, /п[иi][з3]д/i, /[еe]б[аa@][тt]/i, /[еe]б[аa@][лl]/i, /[еe]б[аa@][нn]/i,
+  /[б6]л[яy][дt]/i, /[сc][уy][кk][аa]/i, /[нn][аa@][хx]/i, /[пp][иi][дd][оo][рp]/i,
+  /[гg][еe][йy]/i, /[нn][иi][гg][еe][рp]/i, /[нn][аa@][цz][иi]/i, /[фf][аa@][шs][иi][сc][тt]/i,
+  /[жg][иi][дd]/i, /[хx][оo][хx][оo][лl]/i, /[дd][аa@][уy][нn]/i, /[дd][еe][б6][иi][лl]/i,
+  /[мm][уy][дd][аa@][кk]/i, /[гg][аa@][нn][дd][оo][нn]/i, /[ч4][мm][оo]/i,
+  /[лl][оo][хx]/i, /[уy][б6][иi]/i, /[сc][мm][еe][рp][тt]/i, /[вv][оo][йy][нn]/i,
+  /[пp][уy][тt][иi][нn]/i, /[з3][еe][лl][еe][нn][сc][кk]/i, /[тt][рp][аa@][мm][пp]/i,
+  /[б6][аa@][йy][дd][еe][нn]/i, /[пp][оo][рp][нn][оo]/i, /[сc][еe][кk][сc]/i,
+  /[тt][рp][аa@][хx]/i, /[шs][лl][юu][хx][аa@]/i
+];
+const BANNED_PATTERNS_EN = [
+  /f[u*]ck/i, /s[h*][i*]t/i, /b[i*]tch/i, /a[s*][s*]/i, /d[i*]ck/i,
+  /c[o*]ck/i, /p[u*][s*][s*]y/i, /c[u*]nt/i, /n[i*]gg[a*]/i, /f[a*]g/i,
+  /n[a*]z[i*]/i, /h[i*]tl[e*]r/i, /k[i*]ll/i, /m[u*]rd[e*]r/i, /d[e*][a*]th/i,
+  /t[e*]rr[o*]r/i, /r[e*]t[a*]rd/i, /p[o*]rn/i, /s[l*][u*]t/i, /wh[o*]re/i,
+  /r[a*]p[e*]/i, /d[r*][u*]g/i, /c[o*]c[a*]ine/i, /h[e*]r[o*]in/i, /m[e*]th/i,
+  /w[e*][e*]d/i
+];
+
+function isBannedWord(word, lang) {
+  const patterns = lang === 'ru' ? BANNED_PATTERNS_RU : BANNED_PATTERNS_EN;
+  return patterns.some(p => p.test(word));
+}
+
+function isValidWord(word, lang) {
+  if (word.length !== 5) return false;
+  const wordRegex = lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
+  if (!wordRegex.test(word)) return false;
+  if (isBannedWord(word, lang)) return false;
+  const list = lang === 'ru' ? WORDS_RU : WORDS_EN;
+  return list.includes(word.toUpperCase());
+}
 
 function randomWord(lang) {
   const list = lang === 'ru' ? WORDS_RU : WORDS_EN;
@@ -77,7 +127,7 @@ function evaluateGuess(guess, target) {
   for (let i = 0; i < 5; i++) {
     if (result[i] === 'correct') continue;
     const letter = guessLetters[i];
-    let targetIndex = targetLetters.findIndex((l, idx) => l === letter && !matched[idx]);
+    const targetIndex = targetLetters.findIndex((l, idx) => l === letter && !matched[idx]);
     if (targetIndex !== -1) {
       result[i] = 'present';
       matched[targetIndex] = true;
@@ -104,6 +154,9 @@ function removePlayerFromRoom(room, playerId) {
   room.players.splice(playerIndex, 1);
   
   if (room.players.length === 0) {
+    // Clear timers
+    if (room.turnTimer) clearTimeout(room.turnTimer);
+    if (room.duelTimer) clearTimeout(room.duelTimer);
     rooms.delete(room.code);
     console.log(`[ROOM] ${room.code} deleted (no players)`);
     return null;
@@ -111,11 +164,32 @@ function removePlayerFromRoom(room, playerId) {
   
   if (playerId === room.host) {
     room.host = room.players[0].id;
-    room.guest = null;
+    room.guest = room.players.length >= 2 ? room.players[1].id : null;
     console.log(`[ROOM] New host in ${room.code}: ${room.host}`);
   }
   
   // Reset game state
+  resetRoomGameState(room);
+  
+  // Notify remaining players
+  broadcastToRoom(room, 'players_update', {
+    players: room.players
+  });
+  
+  return player;
+}
+
+function resetRoomGameState(room) {
+  // Clear any active timers
+  if (room.turnTimer) {
+    clearTimeout(room.turnTimer);
+    room.turnTimer = null;
+  }
+  if (room.duelTimer) {
+    clearTimeout(room.duelTimer);
+    room.duelTimer = null;
+  }
+  
   room.gameStarted = false;
   room.wordPhase = false;
   room.hostWord = '';
@@ -127,12 +201,113 @@ function removePlayerFromRoom(room, playerId) {
   room.hostWon = false;
   room.guestWon = false;
   room.currentTurn = null;
+  room.turnTimeLeft = null;
+  room.duelTimeLeft = null;
   room.players.forEach(p => {
     p.ready = false;
     p.wordSet = false;
   });
+}
+
+// Timer system for duel mode
+function startDuelTimer(room) {
+  if (room.duelTimer) clearTimeout(room.duelTimer);
   
-  return player;
+  room.duelTimeLeft = 180; // 3 minutes
+  console.log(`[DUEL] Timer started for ${room.code}`);
+  
+  room.duelTimer = setInterval(() => {
+    room.duelTimeLeft--;
+    
+    if (room.duelTimeLeft <= 0) {
+      clearInterval(room.duelTimer);
+      room.duelTimer = null;
+      
+      console.log(`[DUEL] Time's up in ${room.code}`);
+      
+      // Both lose if time runs out
+      broadcastToRoom(room, 'duel_timeout', {
+        message: 'Duel time expired!',
+        word: room.hostWord || room.guestWord
+      });
+      
+      resetRoomGameState(room);
+      broadcastToRoom(room, 'players_update', {
+        players: room.players
+      });
+    }
+  }, 1000);
+}
+
+// Timer for async turn
+function startTurnTimer(room) {
+  if (room.turnTimer) clearTimeout(room.turnTimer);
+  
+  room.turnTimeLeft = 60; // 1 minute per turn
+  console.log(`[TURN] Timer started for ${room.code} (${room.turnTimeLeft}s)`);
+  
+  room.turnTimer = setInterval(() => {
+    room.turnTimeLeft--;
+    
+    if (room.turnTimeLeft <= 0) {
+      clearInterval(room.turnTimer);
+      room.turnTimer = null;
+      
+      console.log(`[TURN] Time's up for ${room.code}`);
+      
+      // Current turn player loses
+      const currentPlayer = room.players.find(p => p.id === room.currentTurn);
+      const otherPlayer = room.players.find(p => p.id !== room.currentTurn);
+      
+      if (currentPlayer) {
+        // Send empty guess to trigger timeout on client
+        const currentWs = clients.get(currentPlayer.id);
+        if (currentWs) {
+          sendToClient(currentWs, 'game_lost', {
+            message: 'Time expired',
+            word: currentPlayer.id === room.host ? room.guestWord : room.hostWord,
+            winnerId: otherPlayer?.id,
+            winnerNickname: otherPlayer?.name || 'Opponent',
+            winnerColor: otherPlayer?.activeColor || ''
+          });
+        }
+        
+        // Notify winner
+        if (otherPlayer) {
+          const otherWs = clients.get(otherPlayer.id);
+          if (otherWs) {
+            sendToClient(otherWs, 'game_won', {
+              word: otherPlayer.id === room.host ? room.guestWord : room.hostWord,
+              winnerId: otherPlayer.id,
+              winnerNickname: otherPlayer.name,
+              winnerColor: otherPlayer.activeColor || ''
+            });
+          }
+        }
+      }
+      
+      broadcastToRoom(room, 'game_over', {
+        winnerId: otherPlayer?.id,
+        winnerNickname: otherPlayer?.name || 'Player'
+      });
+      
+      resetRoomGameState(room);
+      broadcastToRoom(room, 'players_update', {
+        players: room.players
+      });
+    }
+  }, 1000);
+}
+
+function clearRoomTimers(room) {
+  if (room.turnTimer) {
+    clearInterval(room.turnTimer);
+    room.turnTimer = null;
+  }
+  if (room.duelTimer) {
+    clearInterval(room.duelTimer);
+    room.duelTimer = null;
+  }
 }
 
 function startGame(room) {
@@ -141,7 +316,7 @@ function startGame(room) {
   const firstTurn = Math.random() < 0.5 ? room.host : room.guest;
   room.currentTurn = firstTurn;
   
-  console.log(`[GAME] Started in ${room.code}, first turn: ${firstTurn === room.host ? 'Host' : 'Guest'}`);
+  console.log(`[GAME] Started in ${room.code}, mode: ${room.multiMode}, first turn: ${firstTurn === room.host ? 'Host' : 'Guest'}`);
   
   const hostWs = clients.get(room.host);
   const guestWs = clients.get(room.guest);
@@ -169,9 +344,40 @@ function startGame(room) {
     });
   }
   
+  // Start appropriate timer
+  if (room.multiMode === 'live') {
+    startDuelTimer(room);
+  } else if (room.multiMode === 'async') {
+    startTurnTimer(room);
+  }
+  
   broadcastToRoom(room, 'battle_start', {
-    message: 'Both words set! BATTLE BEGINS!'
+    message: 'Both words set! ⚔ BATTLE BEGINS! ⚔',
+    player1: hostPlayer?.name || 'P1',
+    player2: guestPlayer?.name || 'P2'
   });
+}
+
+// Anti-spam check for chat
+function isSpamming(playerId) {
+  const now = Date.now();
+  const timestamps = messageTimestamps.get(playerId) || [];
+  
+  // Remove old entries
+  const recent = timestamps.filter(t => now - t < 1000);
+  
+  if (recent.length >= MAX_MESSAGES_PER_SECOND) {
+    return true;
+  }
+  
+  // Check cooldown
+  if (recent.length > 0 && now - recent[recent.length - 1] < MESSAGE_COOLDOWN) {
+    return true;
+  }
+  
+  recent.push(now);
+  messageTimestamps.set(playerId, recent);
+  return false;
 }
 
 // Update player info in room
@@ -182,24 +388,50 @@ function updatePlayerInfo(ws, data) {
   const player = room.players.find(p => p.id === ws.id);
   if (!player) return;
   
-  if (data.nickname) {
-    ws.nickname = data.nickname;
-    player.name = data.nickname;
+  let updated = false;
+  
+  if (data.nickname && data.nickname !== ws.nickname) {
+    // Sanitize nickname
+    const sanitized = data.nickname.substring(0, 20).replace(/[<>]/g, '');
+    if (sanitized) {
+      ws.nickname = sanitized;
+      player.name = sanitized;
+      updated = true;
+    }
   }
-  if (data.avatarUrl !== undefined) {
+  if (data.avatarUrl !== undefined && data.avatarUrl !== ws.avatarUrl) {
     ws.avatarUrl = data.avatarUrl;
     player.avatarUrl = data.avatarUrl;
+    updated = true;
   }
-  if (data.activeColor !== undefined) {
+  if (data.activeColor !== undefined && data.activeColor !== ws.activeColor) {
     ws.activeColor = data.activeColor;
     player.activeColor = data.activeColor;
+    updated = true;
   }
   
-  // Broadcast updated player list to room
-  broadcastToRoom(room, 'players_update', {
-    players: room.players
-  });
+  if (updated) {
+    broadcastToRoom(room, 'players_update', {
+      players: room.players
+    });
+  }
 }
+
+// Clean up stale rooms (no activity for 30 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (let [code, room] of rooms) {
+    if (room.lastActivity && now - room.lastActivity > 30 * 60 * 1000) {
+      console.log(`[CLEANUP] Removing stale room ${code}`);
+      clearRoomTimers(room);
+      broadcastToRoom(room, 'player_left', {
+        message: 'Room closed due to inactivity',
+        players: []
+      });
+      rooms.delete(code);
+    }
+  }
+}, 5 * 60 * 1000); // Check every 5 minutes
 
 wss.on('connection', (ws) => {
   ws.id = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -216,10 +448,10 @@ wss.on('connection', (ws) => {
     try {
       const data = JSON.parse(message);
       
-      // Always update player info
+      // Update player info on every message
       updatePlayerInfo(ws, data);
       
-      console.log(`[${ws.id}] ${data.type}`);
+      console.log(`[${ws.nickname}] ${data.type}`);
       
       switch (data.type) {
         
@@ -237,7 +469,7 @@ wss.on('connection', (ws) => {
             guest: null,
             lang: data.lang || 'ru',
             multiMode: data.multiMode || 'async',
-            isPrivate: data.isPrivate || false,
+            isPrivate: data.isPrivate !== undefined ? data.isPrivate : false,
             players: [{ 
               id: ws.id, 
               name: ws.nickname || 'Player 1', 
@@ -256,7 +488,10 @@ wss.on('connection', (ws) => {
             hostGameOver: false,
             guestGameOver: false,
             hostWon: false,
-            guestWon: false
+            guestWon: false,
+            turnTimer: null,
+            duelTimer: null,
+            lastActivity: Date.now()
           };
           
           rooms.set(code, room);
@@ -274,7 +509,8 @@ wss.on('connection', (ws) => {
         
         // ==================== JOIN ROOM ====================
         case 'join_room': {
-          const room = rooms.get(data.code?.toUpperCase());
+          const code = data.code?.toUpperCase();
+          const room = rooms.get(code);
           
           if (!room) {
             sendToClient(ws, 'error', { message: 'Room not found' });
@@ -289,8 +525,8 @@ wss.on('connection', (ws) => {
           const joinLang = data.lang || 'ru';
           if (joinLang !== room.lang) {
             const msg = joinLang === 'ru' 
-              ? 'This room is for English language' 
-              : 'Эта комната для английского языка';
+              ? 'This room is for English language. Create a Russian room.' 
+              : 'Эта комната для русского языка. Создайте английскую комнату.';
             sendToClient(ws, 'error', { message: msg });
             return;
           }
@@ -310,6 +546,7 @@ wss.on('connection', (ws) => {
             ready: false, 
             wordSet: false 
           });
+          room.lastActivity = Date.now();
           
           sendToClient(ws, 'room_joined', {
             code: room.code,
@@ -352,6 +589,7 @@ wss.on('connection', (ws) => {
                 ready: false, 
                 wordSet: false 
               });
+              room.lastActivity = Date.now();
               
               sendToClient(ws, 'room_joined', {
                 code: room.code,
@@ -400,7 +638,10 @@ wss.on('connection', (ws) => {
               hostGameOver: false,
               guestGameOver: false,
               hostWon: false,
-              guestWon: false
+              guestWon: false,
+              turnTimer: null,
+              duelTimer: null,
+              lastActivity: Date.now()
             };
             
             rooms.set(code, room);
@@ -432,6 +673,7 @@ wss.on('connection', (ws) => {
           }
           
           room.isPrivate = data.isPrivate;
+          room.lastActivity = Date.now();
           console.log(`[ROOM] ${room.code} is now ${room.isPrivate ? 'private' : 'public'}`);
           
           broadcastToRoom(room, 'room_type_changed', {
@@ -482,11 +724,6 @@ wss.on('connection', (ws) => {
           
           removePlayerFromRoom(room, data.playerId);
           
-          broadcastToRoom(room, 'player_kicked', {
-            playerId: data.playerId,
-            players: room.players
-          });
-          
           console.log(`[KICK] ${kickedPlayer.name} kicked from ${room.code}`);
           break;
         }
@@ -500,10 +737,25 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Send chat with player's active color
+          // Anti-spam
+          if (isSpamming(ws.id)) {
+            sendToClient(ws, 'error', { message: 'Slow down! Please wait before sending.' });
+            return;
+          }
+          
+          // Sanitize message
+          const sanitizedMessage = (data.message || '').substring(0, 100).replace(/[<>]/g, '');
+          
+          if (!sanitizedMessage.trim()) {
+            return;
+          }
+          
+          room.lastActivity = Date.now();
+          
+          // Broadcast to ALL players (including sender for confirmation)
           broadcastToRoom(room, 'chat_message', {
             sender: ws.nickname || 'Player',
-            message: data.message,
+            message: sanitizedMessage,
             room: data.room || 'lobby',
             activeColor: ws.activeColor || '',
             senderId: ws.id
@@ -524,13 +776,10 @@ wss.on('connection', (ws) => {
           if (!player) return;
           
           player.ready = true;
+          room.lastActivity = Date.now();
           console.log(`[READY] ${player.name} ready in ${room.code}`);
           
-          sendToClient(ws, 'ready_status', { 
-            ready: true,
-            players: room.players 
-          });
-          
+          // Broadcast updated player list
           broadcastToRoom(room, 'players_update', {
             players: room.players
           });
@@ -562,10 +811,10 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          const wordRegex = room.lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
-          
-          if (!data.word || data.word.length !== 5 || !wordRegex.test(data.word)) {
-            const msg = room.lang === 'ru' ? 'Invalid word (5 Russian letters)' : 'Invalid word (5 English letters)';
+          if (!data.word || !isValidWord(data.word, room.lang)) {
+            const msg = room.lang === 'ru' 
+              ? 'Недопустимое слово (5 русских букв, без запрещённых слов)' 
+              : 'Invalid word (5 English letters, no banned words)';
             sendToClient(ws, 'error', { message: msg });
             return;
           }
@@ -580,13 +829,10 @@ wss.on('connection', (ws) => {
           }
           
           player.wordSet = true;
+          room.lastActivity = Date.now();
           console.log(`[WORD] ${player.name} set word in ${room.code}`);
           
-          sendToClient(ws, 'word_set_status', {
-            wordSet: true,
-            players: room.players
-          });
-          
+          // Broadcast updated players
           broadcastToRoom(room, 'players_update', {
             players: room.players
           });
@@ -624,10 +870,10 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          const wordRegex = room.lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
-          
-          if (!data.guess || data.guess.length !== 5 || !wordRegex.test(data.guess)) {
-            const msg = room.lang === 'ru' ? 'Invalid word' : 'Invalid word';
+          if (!data.guess || !isValidWord(data.guess, room.lang)) {
+            const msg = room.lang === 'ru' 
+              ? 'Недопустимое слово' 
+              : 'Invalid word';
             sendToClient(ws, 'error', { message: msg });
             return;
           }
@@ -642,8 +888,9 @@ wss.on('connection', (ws) => {
           } else {
             room.guestAttempts.push({ word: upperGuess, result });
           }
+          room.lastActivity = Date.now();
           
-          console.log(`[GUESS] ${isHost ? 'Host' : 'Guest'}: ${upperGuess} -> ${result.join(',')}`);
+          console.log(`[GUESS] ${isHost ? 'Host' : 'Guest'} (${ws.nickname}): ${upperGuess} -> ${result.join(',')}`);
           
           sendToClient(ws, 'guess_result', {
             guess: upperGuess,
@@ -651,8 +898,24 @@ wss.on('connection', (ws) => {
             attempts: isHost ? room.hostAttempts : room.guestAttempts
           });
           
+          // Update opponent with latest attempts
+          const opponentId = isHost ? room.guest : room.host;
+          const opponentWs = clients.get(opponentId);
+          const opponentPlayer = room.players.find(p => p.id === opponentId);
+          
+          if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
+            sendToClient(opponentWs, 'opponent_update', {
+              opponentAttempts: isHost ? room.hostAttempts : room.guestAttempts,
+              opponentNickname: ws.nickname,
+              opponentAvatar: ws.avatarUrl || '',
+              opponentColor: ws.activeColor || ''
+            });
+          }
+          
           // Check for win
           if (upperGuess === targetWord) {
+            clearRoomTimers(room);
+            
             if (isHost) {
               room.hostGameOver = true;
               room.hostWon = true;
@@ -662,7 +925,6 @@ wss.on('connection', (ws) => {
             }
             
             const winnerPlayer = room.players.find(p => p.id === ws.id);
-            const loserPlayer = room.players.find(p => p.id !== ws.id);
             const winnerName = winnerPlayer?.name || 'Player';
             
             sendToClient(ws, 'game_won', { 
@@ -672,8 +934,7 @@ wss.on('connection', (ws) => {
               winnerColor: winnerPlayer?.activeColor || ''
             });
             
-            const opponentWs = clients.get(isHost ? room.guest : room.host);
-            if (opponentWs) {
+            if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
               sendToClient(opponentWs, 'game_lost', {
                 winnerId: ws.id,
                 winnerNickname: winnerName,
@@ -689,36 +950,77 @@ wss.on('connection', (ws) => {
               word: targetWord
             });
             
+            // Reset for potential rematch
+            setTimeout(() => {
+              if (rooms.has(room.code)) {
+                resetRoomGameState(room);
+                broadcastToRoom(room, 'players_update', {
+                  players: room.players
+                });
+              }
+            }, 3000);
+            
             return;
           }
           
-          // Check if attempts exhausted
+          // Check if attempts exhausted (only for async mode, live mode continues)
           const attempts = isHost ? room.hostAttempts : room.guestAttempts;
-          if (attempts.length >= 6) {
+          if (room.multiMode === 'async' && attempts.length >= 6) {
             if (isHost) room.hostGameOver = true;
             else room.guestGameOver = true;
             
             const loserPlayer = room.players.find(p => p.id === ws.id);
-            const opponentId = isHost ? room.guest : room.host;
-            const opponentPlayer = room.players.find(p => p.id === opponentId);
-            const opponentName = opponentPlayer?.name || 'Opponent';
+            const oppPlayer = room.players.find(p => p.id === opponentId);
+            const oppName = oppPlayer?.name || 'Opponent';
             
             sendToClient(ws, 'game_lost', {
               message: 'Out of attempts',
               word: targetWord,
               winnerId: opponentId,
-              winnerNickname: opponentName,
-              winnerColor: opponentPlayer?.activeColor || ''
+              winnerNickname: oppName,
+              winnerColor: oppPlayer?.activeColor || ''
             });
             
+            // If both game over, end game
             if (room.hostGameOver && room.guestGameOver) {
+              clearRoomTimers(room);
               broadcastToRoom(room, 'game_over', {
                 winnerId: null,
-                message: 'Draw! Both failed to guess.',
+                message: 'Both players exhausted attempts',
                 word: null
               });
+              
+              setTimeout(() => {
+                if (rooms.has(room.code)) {
+                  resetRoomGameState(room);
+                  broadcastToRoom(room, 'players_update', {
+                    players: room.players
+                  });
+                }
+              }, 3000);
               return;
             }
+            
+            // If only one game over, the other player continues
+            if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
+              sendToClient(opponentWs, 'game_won', {
+                word: isHost ? room.hostWord : room.guestWord,
+                winnerId: opponentId,
+                winnerNickname: oppName,
+                winnerColor: oppPlayer?.activeColor || ''
+              });
+              
+              setTimeout(() => {
+                if (rooms.has(room.code)) {
+                  resetRoomGameState(room);
+                  broadcastToRoom(room, 'players_update', {
+                    players: room.players
+                  });
+                }
+              }, 3000);
+            }
+            
+            return;
           }
           
           // Pass turn (async mode only)
@@ -731,20 +1033,39 @@ wss.on('connection', (ws) => {
               room.currentTurn = isHost ? room.guest : room.host;
             }
             
+            // Reset turn timer
+            if (room.turnTimer) {
+              clearInterval(room.turnTimer);
+              room.turnTimer = null;
+            }
+            startTurnTimer(room);
+            
             const nextPlayer = clients.get(room.currentTurn);
             if (nextPlayer && nextPlayer.readyState === WebSocket.OPEN) {
               sendToClient(nextPlayer, 'your_turn', { message: 'Your turn' });
             }
           }
+          break;
+        }
+        
+        // ==================== DUEL TIMEOUT ====================
+        case 'duel_timeout': {
+          const room = findRoomByPlayer(ws.id);
+          if (!room) return;
           
-          // Update opponent
-          const opponentId = isHost ? room.guest : room.host;
-          const opponentWs = clients.get(opponentId);
-          if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
-            sendToClient(opponentWs, 'opponent_update', {
-              opponentAttempts: isHost ? room.hostAttempts : room.guestAttempts
-            });
-          }
+          clearRoomTimers(room);
+          broadcastToRoom(room, 'duel_timeout', {
+            message: 'Duel time expired!'
+          });
+          
+          setTimeout(() => {
+            if (rooms.has(room.code)) {
+              resetRoomGameState(room);
+              broadcastToRoom(room, 'players_update', {
+                players: room.players
+              });
+            }
+          }, 3000);
           break;
         }
         
@@ -753,6 +1074,7 @@ wss.on('connection', (ws) => {
           const room = findRoomByPlayer(ws.id);
           
           if (room) {
+            clearRoomTimers(room);
             const player = removePlayerFromRoom(room, ws.id);
             
             if (player) {
@@ -770,10 +1092,11 @@ wss.on('connection', (ws) => {
         }
         
         default:
-          console.log(`[?] Unknown type: ${data.type}`);
+          console.log(`[?] Unknown type from ${ws.nickname}: ${data.type}`);
       }
     } catch (error) {
       console.error('Error processing message:', error);
+      sendToClient(ws, 'error', { message: 'Server error processing your request' });
     }
   });
 
@@ -782,6 +1105,7 @@ wss.on('connection', (ws) => {
     
     const room = findRoomByPlayer(ws.id);
     if (room) {
+      clearRoomTimers(room);
       const player = removePlayerFromRoom(room, ws.id);
       
       if (player && room.players.length > 0) {
@@ -794,13 +1118,38 @@ wss.on('connection', (ws) => {
     
     clients.delete(ws.id);
   });
+  
+  ws.on('error', (error) => {
+    console.error(`[ERROR] WebSocket error for ${ws.nickname}:`, error.message);
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[SHUTDOWN] SIGTERM received. Cleaning up...');
+  for (let [code, room] of rooms) {
+    clearRoomTimers(room);
+    broadcastToRoom(room, 'player_left', {
+      message: 'Server shutting down',
+      players: []
+    });
+  }
+  rooms.clear();
+  wss.close();
+  server.close();
+  process.exit(0);
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`========================================`);
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Wordle Server v6 running on port ${PORT}`);
   console.log(`📡 WebSocket: wss://localhost:${PORT}`);
   console.log(`❤️  Health: http://localhost:${PORT}/health`);
+  console.log(`📊 Stats: http://localhost:${PORT}/stats`);
+  console.log(`🛡️  Word validation: ENABLED`);
+  console.log(`🚫 Anti-spam: ENABLED (${MAX_MESSAGES_PER_SECOND} msg/sec)`);
+  console.log(`⏱️  Turn timer: 60s (async) | Duel timer: 180s (live)`);
+  console.log(`🔄 Room cleanup: 30min inactivity`);
   console.log(`========================================`);
 });
