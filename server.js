@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
   }
   
   res.writeHead(200);
-  res.end('Wordle Multiplayer Server v7');
+  res.end('Wordle Multiplayer Server v8');
 });
 
 const wss = new WebSocket.Server({ server });
@@ -59,35 +59,40 @@ const MAX_MESSAGES_PER_SECOND = 3;
 const WORDS_RU = 'АРБУЗ,БАНКА,ВЕТЕР,ГОРОД,ДОЖДЬ,ЖАБРА,ЗЕБРА,ИГРОК,КАРТА,ЛОДКА,МОРОЗ,НОСОК,ПАРУС,РОМАН,САХАР,ТУМАН,ФАКЕЛ,ЦАПЛЯ,ЧАШКА,ШТОРМ,ЩЕНОК,ЭКРАН,ЮНОША,ЯБЕДА,ПИРОГ,ТОЧКА,РУЧКА,КНИГА,КОШКА,МЫШКА,ЗЕМЛЯ,ВОЛНА,ГРОЗА,ЗАКАТ,ОГОНЬ,БЕРЕГ,ЗАМОК,ЛИМОН,НИТКА,РУБЛЬ,СМЕНА,ТРОПА,ХОЛОД,ГОРКА,ИСКРА,СОСНА,ТОПОР,ЗВЕЗД,КЛЮЧИ,ПОЛЕТ,МЕСЯЦ,БРОВИ,МЕЧТА,ОТВЕТ,СЛОВО,ЧИСЛО,МЕСТО,ВРЕМЯ,ВЕЧЕР,УТРОМ,МЫСЛЬ'.split(',').filter(w => w.length === 5);
 const WORDS_EN = 'ABOUT,ABOVE,ACTOR,ADMIT,ADOPT,ADULT,AFTER,AGAIN,AGENT,ALBUM,ALERT,ALIKE,ALIVE,ALLOW,ALONE,ANGEL,ANGRY,APPLE,ARENA,ARGUE,ARISE,ARROW,ASIDE,AVOID,AWARD,BASIC,BEACH,BEGAN,BEGIN,BEING,BELOW,BIRTH,BLACK,BLADE,BLAME,BLANK,BLAST,BLAZE,BLEED,BLESS,BLIND,BLOCK,BLOOD,BOARD,BOOST,BRAIN,BRAND,BRAVE,BREAK,BREED,BRICK,BRIEF,BRING,BROAD,BROWN,BRUSH,BUILD,BURST,CANDY,CARRY,CAUSE,CHAIN,CHAIR,CHAOS,CHARM,CHEAP,CHECK,CHESS,CHEST,CHILD,CLEAN,CLEAR,CLIMB,CLOSE,CLOUD,COAST,COLOR,CORAL,COULD,COUNT,COURT,COVER,CRACK,CRAFT,CRASH,CRAZY,CREAM,CRIME,CROSS,CROWD,CROWN,CRUSH,CURVE,CYCLE,DAILY,DANCE,DEATH,DELAY,DEVIL,DIARY,DIRTY,DOING,DOUBT,DOUGH,DRAFT,DRAMA,DREAM,DRESS,DRINK,DRIVE,DRONE,EARLY,EARTH,EIGHT,ELECT,ELITE,EMPTY,ENEMY,ENJOY,ENTER,EQUAL,ERROR,EVENT,EVERY,EXACT,EXIST,EXTRA,FAITH,FALSE,FAULT,FENCE,FEVER,FIELD,FIGHT,FINAL,FIRST,FLAME,FLASH,FLOAT,FLOOR,FLUID,FOCUS,FORCE,FORTH,FOUND,FRAME,FRESH,FRONT,FROST,FRUIT,FULLY,FUNNY,GHOST,GIANT,GIVEN,GLASS,GLOBE,GLORY,GOING,GRACE,GRADE,GRAIN,GRAND,GRANT,GRASS,GRAVE,GREAT,GREEN,GROUP,GUARD,GUESS,GUEST,GUIDE,HAPPY,HEART,HEAVY,HELLO,HONEY,HONOR,HORSE,HOTEL,HOUSE,HUMAN,HUMOR,HURRY,IMAGE,INDEX,INNER,INPUT,ISSUE,JEWEL,JOINT,JUDGE,JUICE,KNOWN,LABEL,LARGE,LATER,LAUGH,LAYER,LEARN,LEAVE,LEGAL,LEVEL,LIGHT,LIMIT,LOCAL,LOGIC,LOOSE,LUNCH,MAGIC,MAJOR,MARCH,MATCH,MEDIA,METAL,MIGHT,MINOR,MINUS,MIXED,MODEL,MONEY,MONTH,MOUNT,MOUSE,MOUTH,MOVIE,MUSIC,NERVE,NEVER,NIGHT,NOISE,NORTH,NOVEL,NURSE,OCEAN,OFFER,OFTEN,OLIVE,ORDER,OTHER,OUGHT,OUTER,OWNER,PAINT,PANEL,PAPER,PARTY,PEACE,PEARL,PHASE,PHONE,PHOTO,PIANO,PIECE,PILOT,PIXEL,PLACE,PLAIN,PLANE,PLANT,PLATE,POINT,POWER,PRESS,PRICE,PRIDE,PRIME,PRIZE,PROOF,PROUD,PROVE,PUPIL,QUEEN,QUEST,QUICK,QUIET,QUITE,RADIO,RAISE,RANGE,RAPID,REACH,REACT,READY,REALM,REIGN,REPLY,RIGHT,RIVER,ROBOT,ROCKY,ROUGH,ROUND,ROUTE,ROYAL,RULER,RURAL,SAINT,SALAD,SAUCE,SCALE,SCENE,SCOPE,SCORE,SENSE,SERVE,SEVEN,SHADE,SHAKE,SHALL,SHAME,SHAPE,SHARE,SHARP,SHELF,SHELL,SHIFT,SHINE,SHIRT,SHOCK,SHOOT,SHORT,SHOUT,SIGHT,SINCE,SIXTH,SIXTY,SKILL,SLAVE,SLEEP,SLICE,SLIDE,SMART,SMELL,SMILE,SMOKE,SNAKE,SOLAR,SOLID,SOLVE,SORRY,SOUTH,SPACE,SPARE,SPARK,SPEAK,SPEED,SPEND,SPILL,SPINE,SPLIT,SPORT,SPRAY,SQUAD,STACK,STAGE,STAND,START,STATE,STEAM,STEEL,STICK,STILL,STOCK,STONE,STORE,STORM,STORY,STUDY,STYLE,SUGAR,SUPER,SWEAR,SWEEP,SWEET,SWIFT,SWING,SWORD,TABLE,TASTE,TEACH,THANK,THEIR,THEME,THERE,THICK,THING,THINK,THIRD,THOSE,THREE,THROW,TIGHT,TIRED,TITLE,TODAY,TOKEN,TOOTH,TOTAL,TOUCH,TOUGH,TOWER,TRACK,TRADE,TRAIL,TRAIN,TREAT,TREND,TRIAL,TRIBE,TRICK,TROOP,TRUCK,TRULY,TRUST,TRUTH,TWICE,TWIST,UNDER,UNION,UNITY,UNTIL,UPPER,UPSET,URBAN,USUAL,VALID,VALUE,VIDEO,VIRAL,VIRUS,VISIT,VITAL,VOCAL,VOICE,WATCH,WATER,WEIGH,WHEAT,WHEEL,WHERE,WHICH,WHILE,WHITE,WHOLE,WHOSE,WOMAN,WOMEN,WORLD,WORRY,WORSE,WORST,WORTH,WOULD,WOUND,WRITE,WRONG,WROTE,YACHT,YIELD,YOUNG,YOUTH,ZEBRA'.split(',').filter(w => w.length === 5);
 
-// ==================== BANNED WORDS ====================
-const BANNED_WORDS_RU = 'СУКА,БЛЯДЬ,БЛЯ,ПИЗДА,ХУЙ,ХУЕ,ХУЯ,ЕБАТЬ,ЕБАЛ,ЕБАН,ПИДОР,ПИДАР,ГАНДОН,МУДАК,УЕБОК,ЗАЛУПА,ШЛЮХА,ПРОСТИТУТКА,ЕБЛО,ЖОПА,СРАКА,ГОВНО,ССАТЬ,СЦАТЬ,ТРАХАТЬ,ТРАХНУ,ВЫЕБАТЬ,ОТСОСИ,МИНЕТ,ДРОЧИТЬ,ДРОЧУ,КОНЧА,КОНЧИТЬ,ГЕЙ,ЛЕСБИ,ЛЕСБИЯНКА,ПЕДИК,ПЕДРИЛА,НИГГЕР,НИГА,НАЦИСТ,ФАШИСТ,ФАШИК,УБИТЬ,УБЬЮ,УБЕЙ,СМЕРТЬ,НАРКОТА,НАРКОТИК,КОКАИН,ГЕРОИН,МЕТАМФЕТАМИН,ТРАВКА,ВОДКА,БУХАТЬ,ПЬЯНЫЙ,ПЬЯНЬ,АЛКАШ,АЛКОГОЛИК,ДЕБИЛ,ДЕГЕНЕРАТ,ИДИОТ,ДАУН,УМСТВЕННО,УРОД,ЛОХ,ЧМО,ЧМЫРЬ,ХАМ,ХАМЛО,ПУТИН,ЗЕЛЕНСКИЙ,ТРАМП,БАЙДЕН,ВОЙНА,ПОРНО,СЕКС,СПЕРМА,КУНИ,АНИЛИНГУС'.split(',');
+// ==================== BANNED WORDS (for chat filter only, NOT for word validation) ====================
+const BANNED_WORDS_RU = 'СУКА,БЛЯДЬ,БЛЯ,ПИЗДА,ХУЙ,ХУЕ,ХУЯ,ЕБАТЬ,ЕБАЛ,ЕБАН,ПИДОР,ПИДАР,ПИДОРАС,ПИДОРАСА,ГАНДОН,МУДАК,УЕБОК,ЗАЛУПА,ШЛЮХА,ПРОСТИТУТКА,ЕБЛО,ЖОПА,СРАКА,ГОВНО,ССАТЬ,СЦАТЬ,ТРАХАТЬ,ТРАХНУ,ВЫЕБАТЬ,ОТСОСИ,МИНЕТ,ДРОЧИТЬ,ДРОЧУ,КОНЧА,КОНЧИТЬ,ГЕЙ,ЛЕСБИ,ЛЕСБИЯНКА,ПЕДИК,ПЕДРИЛА,НИГГЕР,НИГА,НАЦИСТ,ФАШИСТ,ФАШИК,УБИТЬ,УБЬЮ,УБЕЙ,СМЕРТЬ,НАРКОТА,НАРКОТИК,КОКАИН,ГЕРОИН,МЕТАМФЕТАМИН,ТРАВКА,ВОДКА,БУХАТЬ,ПЬЯНЫЙ,ПЬЯНЬ,АЛКАШ,АЛКОГОЛИК,ДЕБИЛ,ДЕГЕНЕРАТ,ИДИОТ,ДАУН,УМСТВЕННО,УРОД,ЛОХ,ЧМО,ЧМЫРЬ,ХАМ,ХАМЛО,ПУТИН,ЗЕЛЕНСКИЙ,ТРАМП,БАЙДЕН,ВОЙНА,ПОРНО,СЕКС,СПЕРМА,КУНИ,АНИЛИНГУС'.split(',');
 const BANNED_WORDS_EN = 'FUCK,SHIT,BITCH,ASS,DICK,COCK,PUSSY,CUNT,NIGGA,NIGGER,FAG,FAGGOT,NAZI,HITLER,KILL,MURDER,DEATH,SUICIDE,TERROR,TERRORIST,RETARD,IDIOT,MORON,STUPID,PORN,SEX,SLUT,WHORE,PROSTITUTE,RAPE,DRUG,COCAINE,HEROIN,METH,WEED,MARIJUANA,PENIS,VAGINA,ANAL,ORAL,MASTURBATE,EJACULATE,TRUMP,BIDEN,PUTIN,ZELENSKY,WAR,DRUNK,ALCOHOL,VODKA,BEER'.split(',');
 const BANNED_PATTERNS_RU = [/х[уy]й/i, /п[иi][з3]д/i, /[еe]б[аa@][тt]/i, /[еe]б[аa@][лl]/i, /[еe]б[аa@][нn]/i, /[б6]л[яy][дt]/i, /[сc][уy][кk][аa]/i, /[нn][аa@][хx]/i, /[пp][иi][дd][оo][рp]/i, /[гg][еe][йy]/i, /[нn][иi][гg][еe][рp]/i, /[нn][аa@][цz][иi]/i, /[фf][аa@][шs][иi][сc][тt]/i, /[жg][иi][дd]/i, /[хx][оo][хx][оo][лl]/i, /[дd][аa@][уy][нn]/i, /[дd][еe][б6][иi][лl]/i, /[мm][уy][дd][аa@][кk]/i, /[гg][аa@][нn][дd][оo][нn]/i, /[ч4][мm][оo]/i, /[лl][оo][хx]/i, /[уy][б6][иi]/i, /[сc][мm][еe][рp][тt]/i, /[вv][оo][йy][нn]/i, /[пp][уy][тt][иi][нn]/i, /[з3][еe][лl][еe][нn][сc][кk]/i, /[тt][рp][аa@][мm][пp]/i, /[б6][аa@][йy][дd][еe][нn]/i, /[пp][оo][рp][нn][оo]/i, /[сc][еe][кk][сc]/i, /[тt][рp][аa@][хx]/i, /[шs][лl][юu][хx][аa@]/i];
 const BANNED_PATTERNS_EN = [/f[u*]ck/i, /s[h*][i*]t/i, /b[i*]tch/i, /a[s*][s*]/i, /d[i*]ck/i, /c[o*]ck/i, /p[u*][s*][s*]y/i, /c[u*]nt/i, /n[i*]gg[a*]/i, /f[a*]g/i, /n[a*]z[i*]/i, /h[i*]tl[e*]r/i, /k[i*]ll/i, /m[u*]rd[e*]r/i, /d[e*][a*]th/i, /t[e*]rr[o*]r/i, /r[e*]t[a*]rd/i, /p[o*]rn/i, /s[l*][u*]t/i, /wh[o*]re/i, /r[a*]p[e*]/i, /d[r*][u*]g/i, /c[o*]c[a*]ine/i, /h[e*]r[o*]in/i, /m[e*]th/i, /w[e*][e*]d/i];
-
-function isBannedWord(word, lang) {
-  const bannedList = lang === 'ru' ? BANNED_WORDS_RU : BANNED_WORDS_EN;
-  const patterns = lang === 'ru' ? BANNED_PATTERNS_RU : BANNED_PATTERNS_EN;
-  
-  // Check full words
-  if (bannedList.includes(word.toUpperCase())) return true;
-  
-  // Check patterns
-  if (patterns.some(p => p.test(word))) return true;
-  
-  return false;
-}
 
 function filterProfanity(text, lang) {
   let filtered = text;
   const bannedList = lang === 'ru' ? BANNED_WORDS_RU : BANNED_WORDS_EN;
   const patterns = lang === 'ru' ? BANNED_PATTERNS_RU : BANNED_PATTERNS_EN;
   
-  bannedList.forEach(word => {
-    const regex = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    filtered = filtered.replace(regex, match => '*'.repeat(match.length));
+  // Split into words and filter each
+  const words = filtered.split(/(\s+|[.,!?;:()\[\]{}"'])/);
+  filtered = words.map(part => {
+    if (/^\s+$/.test(part) || /^[.,!?;:()\[\]{}"']$/.test(part)) return part;
+    let cleaned = part;
+    bannedList.forEach(word => {
+      const regex = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      cleaned = cleaned.replace(regex, match => '*'.repeat(match.length));
+    });
+    return cleaned;
+  }).join('');
+  
+  // Check for banned words hidden with spaces
+  const noSpaces = filtered.replace(/\s+/g, '');
+  const allBannedNoSpaces = bannedList.filter(w => w.length >= 3);
+  allBannedNoSpaces.forEach(banned => {
+    const chars = banned.split('');
+    const flexibleRegex = chars.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
+    const flexReg = new RegExp(flexibleRegex, 'gi');
+    filtered = filtered.replace(flexReg, match => '*'.repeat(match.replace(/\s/g, '').length));
   });
   
+  // Pattern matching
   patterns.forEach(pattern => {
     filtered = filtered.replace(pattern, match => '*'.repeat(match.length));
   });
@@ -95,13 +100,12 @@ function filterProfanity(text, lang) {
   return filtered;
 }
 
-function isValidWord(word, lang) {
-  if (word.length !== 5) return false;
+// REMOVED: isBannedWord and isValidWord - no longer blocking words
+// Words are only validated by length and language (client-side)
+function isValidWordFormat(word, lang) {
+  if (!word || word.length !== 5) return false;
   const wordRegex = lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
-  if (!wordRegex.test(word)) return false;
-  if (isBannedWord(word, lang)) return false;
-  const list = lang === 'ru' ? WORDS_RU : WORDS_EN;
-  return list.includes(word.toUpperCase());
+  return wordRegex.test(word);
 }
 
 function randomWord(lang) {
@@ -228,7 +232,6 @@ function resetRoomGameState(room) {
   });
 }
 
-// Timer system for duel mode
 function startDuelTimer(room) {
   if (room.duelTimer) clearInterval(room.duelTimer);
   
@@ -245,7 +248,7 @@ function startDuelTimer(room) {
       console.log(`[DUEL] Time's up in ${room.code}`);
       
       broadcastToRoom(room, 'duel_timeout', {
-        message: 'Duel time expired!',
+        message: room.lang === 'ru' ? 'Время дуэли истекло!' : 'Duel time expired!',
         word: room.hostWord || room.guestWord
       });
       
@@ -257,7 +260,6 @@ function startDuelTimer(room) {
   }, 1000);
 }
 
-// Timer for async turn
 function startTurnTimer(room) {
   if (room.turnTimer) clearInterval(room.turnTimer);
   
@@ -280,7 +282,7 @@ function startTurnTimer(room) {
         const currentWs = clients.get(currentPlayer.id);
         if (currentWs) {
           sendToClient(currentWs, 'game_lost', {
-            message: 'Time expired',
+            message: room.lang === 'ru' ? 'Время вышло!' : 'Time expired',
             word: currentPlayer.id === room.host ? room.guestWord : room.hostWord,
             winnerId: otherPlayer?.id,
             winnerNickname: otherPlayer?.name || 'Opponent',
@@ -365,14 +367,17 @@ function startGame(room) {
     startTurnTimer(room);
   }
   
+  const battleMsg = room.lang === 'ru' 
+    ? 'Оба слова загаданы! ⚔ БИТВА НАЧИНАЕТСЯ! ⚔'
+    : 'Both words set! ⚔ BATTLE BEGINS! ⚔';
+  
   broadcastToRoom(room, 'battle_start', {
-    message: 'Both words set! ⚔ BATTLE BEGINS! ⚔',
+    message: battleMsg,
     player1: hostPlayer?.name || 'P1',
     player2: guestPlayer?.name || 'P2'
   });
 }
 
-// Anti-spam check for chat
 function isSpamming(playerId) {
   const now = Date.now();
   const timestamps = messageTimestamps.get(playerId) || [];
@@ -392,7 +397,6 @@ function isSpamming(playerId) {
   return false;
 }
 
-// Update player info in room
 function updatePlayerInfo(ws, data) {
   const room = findRoomByPlayer(ws.id);
   if (!room) return;
@@ -436,7 +440,7 @@ setInterval(() => {
       console.log(`[CLEANUP] Removing stale room ${code}`);
       clearRoomTimers(room);
       broadcastToRoom(room, 'player_left', {
-        message: 'Room closed due to inactivity',
+        message: room.lang === 'ru' ? 'Комната закрыта из-за неактивности' : 'Room closed due to inactivity',
         players: []
       });
       rooms.delete(code);
@@ -459,14 +463,12 @@ wss.on('connection', (ws) => {
     try {
       const data = JSON.parse(message);
       
-      // Update player info on every message
       updatePlayerInfo(ws, data);
       
       console.log(`[${ws.nickname}] ${data.type}`);
       
       switch (data.type) {
         
-        // ==================== GET PUBLIC ROOMS ====================
         case 'get_public_rooms': {
           const publicRooms = [];
           for (let [code, room] of rooms) {
@@ -485,7 +487,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== CREATE ROOM ====================
         case 'create_room': {
           if (findRoomByPlayer(ws.id)) {
             sendToClient(ws, 'error', { message: 'You are already in a room' });
@@ -493,16 +494,17 @@ wss.on('connection', (ws) => {
           }
           
           const code = generateRoomCode();
+          const roomLang = data.lang || 'ru';
           const room = {
             code,
             host: ws.id,
             guest: null,
-            lang: data.lang || 'ru',
+            lang: roomLang,
             multiMode: data.multiMode || 'async',
             isPrivate: data.isPrivate !== undefined ? data.isPrivate : false,
             players: [{ 
               id: ws.id, 
-              name: ws.nickname || 'Player 1', 
+              name: ws.nickname || (roomLang === 'ru' ? 'Игрок 1' : 'Player 1'), 
               avatarUrl: ws.avatarUrl || '', 
               activeColor: ws.activeColor || '',
               ready: false, 
@@ -537,45 +539,47 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== JOIN ROOM ====================
         case 'join_room': {
           const code = data.code?.toUpperCase();
           const room = rooms.get(code);
           
           if (!room) {
-            sendToClient(ws, 'error', { message: 'Room not found' });
+            const msg = (data.lang || 'ru') === 'ru' ? 'Комната не найдена' : 'Room not found';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
           if (room.players.length >= 2) {
-            sendToClient(ws, 'error', { message: 'Room is full' });
+            const msg = (data.lang || 'ru') === 'ru' ? 'Комната заполнена' : 'Room is full';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
-          if (room.isPrivate && data.code?.toUpperCase() !== room.code) {
-            sendToClient(ws, 'error', { message: 'Room is private. Use the code to join.' });
-            return;
+          if (room.isPrivate) {
+            // Only allow join by code for private rooms
+            // This is handled by the client sending the correct code
           }
           
           const joinLang = data.lang || 'ru';
           if (joinLang !== room.lang) {
             const msg = joinLang === 'ru' 
-              ? 'This room is for English language. Create a Russian room.' 
-              : 'Эта комната для русского языка. Создайте английскую комнату.';
+              ? 'Эта комната для английского языка. Создайте русскую комнату.' 
+              : 'This room is for Russian language. Create an English room.';
             sendToClient(ws, 'error', { message: msg });
             return;
           }
           
           const existingRoom = findRoomByPlayer(ws.id);
           if (existingRoom && existingRoom !== room) {
-            sendToClient(ws, 'error', { message: 'You are already in another room' });
+            const msg = joinLang === 'ru' ? 'Вы уже в другой комнате' : 'You are already in another room';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
           room.guest = ws.id;
           room.players.push({ 
             id: ws.id, 
-            name: ws.nickname || 'Player 2', 
+            name: ws.nickname || (room.lang === 'ru' ? 'Игрок 2' : 'Player 2'), 
             avatarUrl: ws.avatarUrl || '', 
             activeColor: ws.activeColor || '',
             ready: false, 
@@ -601,7 +605,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== QUICK PLAY ====================
         case 'quick_play': {
           const myLang = data.lang || 'ru';
           const myMode = data.multiMode || 'async';
@@ -618,7 +621,7 @@ wss.on('connection', (ws) => {
               room.guest = ws.id;
               room.players.push({ 
                 id: ws.id, 
-                name: ws.nickname || 'Player 2', 
+                name: ws.nickname || (myLang === 'ru' ? 'Игрок 2' : 'Player 2'), 
                 avatarUrl: ws.avatarUrl || '', 
                 activeColor: ws.activeColor || '',
                 ready: false, 
@@ -657,7 +660,7 @@ wss.on('connection', (ws) => {
               isPrivate: false,
               players: [{ 
                 id: ws.id, 
-                name: ws.nickname || 'Player 1', 
+                name: ws.nickname || (myLang === 'ru' ? 'Игрок 1' : 'Player 1'), 
                 avatarUrl: ws.avatarUrl || '', 
                 activeColor: ws.activeColor || '',
                 ready: false, 
@@ -693,7 +696,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== TOGGLE ROOM TYPE ====================
         case 'toggle_room_type': {
           const room = findRoomByPlayer(ws.id);
           
@@ -703,7 +705,8 @@ wss.on('connection', (ws) => {
           }
           
           if (ws.id !== room.host) {
-            sendToClient(ws, 'error', { message: 'Only host can change room type' });
+            const msg = room.lang === 'ru' ? 'Только хост может менять тип комнаты' : 'Only host can change room type';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
@@ -717,7 +720,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== KICK PLAYER ====================
         case 'kick_player': {
           const room = findRoomByPlayer(ws.id);
           
@@ -727,12 +729,14 @@ wss.on('connection', (ws) => {
           }
           
           if (ws.id !== room.host) {
-            sendToClient(ws, 'error', { message: 'Only host can kick players' });
+            const msg = room.lang === 'ru' ? 'Только хост может кикать игроков' : 'Only host can kick players';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
           if (room.gameStarted) {
-            sendToClient(ws, 'error', { message: 'Cannot kick during game' });
+            const msg = room.lang === 'ru' ? 'Нельзя кикать во время игры' : 'Cannot kick during game';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
@@ -743,17 +747,19 @@ wss.on('connection', (ws) => {
           }
           
           if (kickedPlayer.id === ws.id) {
-            sendToClient(ws, 'error', { message: 'Cannot kick yourself' });
+            const msg = room.lang === 'ru' ? 'Нельзя кикнуть себя' : 'Cannot kick yourself';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
           const kickedWs = clients.get(data.playerId);
           
           if (kickedWs) {
+            const kickMsg = room.lang === 'ru' ? 'Вы были выгнаны из комнаты' : 'You have been kicked from the room';
             sendToClient(kickedWs, 'player_kicked', {
               playerId: data.playerId,
               code: room.code,
-              message: 'You have been kicked from the room'
+              message: kickMsg
             });
           }
           
@@ -763,7 +769,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== CHAT MESSAGE ====================
         case 'chat_message': {
           const room = findRoomByPlayer(ws.id);
           
@@ -772,13 +777,12 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Anti-spam
           if (isSpamming(ws.id)) {
-            sendToClient(ws, 'error', { message: 'Slow down! Please wait before sending.' });
+            const msg = room.lang === 'ru' ? 'Помедленнее! Подождите перед отправкой.' : 'Slow down! Please wait before sending.';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
-          // Sanitize and filter message
           const sanitizedMessage = (data.message || '').substring(0, 100).replace(/[<>]/g, '');
           const filteredMessage = filterProfanity(sanitizedMessage, room.lang);
           
@@ -788,7 +792,6 @@ wss.on('connection', (ws) => {
           
           room.lastActivity = Date.now();
           
-          // Broadcast to ALL players including sender (with filtered message)
           broadcastToRoom(room, 'chat_message', {
             sender: ws.nickname || 'Player',
             message: filteredMessage,
@@ -799,7 +802,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== PLAYER READY ====================
         case 'player_ready': {
           const room = findRoomByPlayer(ws.id);
           
@@ -815,7 +817,6 @@ wss.on('connection', (ws) => {
           room.lastActivity = Date.now();
           console.log(`[READY] ${player.name} ready in ${room.code}`);
           
-          // Broadcast updated player list
           broadcastToRoom(room, 'players_update', {
             players: room.players
           });
@@ -826,14 +827,17 @@ wss.on('connection', (ws) => {
             room.wordPhase = true;
             console.log(`[READY] All ready in ${room.code}`);
             
+            const allReadyMsg = room.lang === 'ru' 
+              ? 'Все готовы! Загадывайте слова!'
+              : 'All ready! Set your words!';
+            
             broadcastToRoom(room, 'all_ready', {
-              message: 'All ready! Set your words.'
+              message: allReadyMsg
             });
           }
           break;
         }
         
-        // ==================== SET WORD ====================
         case 'set_word': {
           const room = findRoomByPlayer(ws.id);
           
@@ -843,14 +847,16 @@ wss.on('connection', (ws) => {
           }
           
           if (!room.wordPhase && room.multiMode === 'async') {
-            sendToClient(ws, 'error', { message: 'Wait for all players to be ready' });
+            const msg = room.lang === 'ru' ? 'Дождитесь готовности всех игроков' : 'Wait for all players to be ready';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
-          if (!data.word || !isValidWord(data.word, room.lang)) {
+          // Only validate format, not dictionary or banned words
+          if (!data.word || !isValidWordFormat(data.word, room.lang)) {
             const msg = room.lang === 'ru' 
-              ? 'Недопустимое слово (5 русских букв, без запрещённых слов)' 
-              : 'Invalid word (5 English letters, no banned words)';
+              ? 'Недопустимый формат слова (5 букв)' 
+              : 'Invalid word format (5 letters)';
             sendToClient(ws, 'error', { message: msg });
             return;
           }
@@ -868,7 +874,6 @@ wss.on('connection', (ws) => {
           room.lastActivity = Date.now();
           console.log(`[WORD] ${player.name} set word in ${room.code}`);
           
-          // Broadcast updated players
           broadcastToRoom(room, 'players_update', {
             players: room.players
           });
@@ -878,8 +883,12 @@ wss.on('connection', (ws) => {
           } else {
             const waiting = room.players.filter(p => !p.wordSet);
             if (waiting.length > 0) {
+              const waitingMsg = room.lang === 'ru'
+                ? `Ожидание: ${waiting.map(p => p.name).join(', ')}`
+                : `Waiting for: ${waiting.map(p => p.name).join(', ')}`;
+              
               broadcastToRoom(room, 'waiting_for_words', {
-                message: `Waiting for: ${waiting.map(p => p.name).join(', ')}`,
+                message: waitingMsg,
                 players: room.players
               });
             }
@@ -887,7 +896,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== MAKE GUESS ====================
         case 'make_guess': {
           const room = findRoomByPlayer(ws.id);
           
@@ -902,14 +910,14 @@ wss.on('connection', (ws) => {
           }
           
           if (room.multiMode === 'async' && room.currentTurn !== ws.id) {
-            sendToClient(ws, 'error', { message: 'Not your turn' });
+            const msg = room.lang === 'ru' ? 'Не ваш ход' : 'Not your turn';
+            sendToClient(ws, 'error', { message: msg });
             return;
           }
           
-          if (!data.guess || !isValidWord(data.guess, room.lang)) {
-            const msg = room.lang === 'ru' 
-              ? 'Недопустимое слово' 
-              : 'Invalid word';
+          // Only validate format
+          if (!data.guess || !isValidWordFormat(data.guess, room.lang)) {
+            const msg = room.lang === 'ru' ? 'Недопустимый формат слова' : 'Invalid word format';
             sendToClient(ws, 'error', { message: msg });
             return;
           }
@@ -934,7 +942,6 @@ wss.on('connection', (ws) => {
             attempts: isHost ? room.hostAttempts : room.guestAttempts
           });
           
-          // Update opponent with latest attempts
           const opponentId = isHost ? room.guest : room.host;
           const opponentWs = clients.get(opponentId);
           const opponentPlayer = room.players.find(p => p.id === opponentId);
@@ -948,7 +955,6 @@ wss.on('connection', (ws) => {
             });
           }
           
-          // Check for win
           if (upperGuess === targetWord) {
             clearRoomTimers(room);
             
@@ -986,7 +992,6 @@ wss.on('connection', (ws) => {
               word: targetWord
             });
             
-            // Reset for potential rematch
             setTimeout(() => {
               if (rooms.has(room.code)) {
                 resetRoomGameState(room);
@@ -999,7 +1004,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Check if attempts exhausted (only for async mode, live mode continues)
           const attempts = isHost ? room.hostAttempts : room.guestAttempts;
           if (room.multiMode === 'async' && attempts.length >= 6) {
             if (isHost) room.hostGameOver = true;
@@ -1010,19 +1014,18 @@ wss.on('connection', (ws) => {
             const oppName = oppPlayer?.name || 'Opponent';
             
             sendToClient(ws, 'game_lost', {
-              message: 'Out of attempts',
+              message: room.lang === 'ru' ? 'Попытки исчерпаны' : 'Out of attempts',
               word: targetWord,
               winnerId: opponentId,
               winnerNickname: oppName,
               winnerColor: oppPlayer?.activeColor || ''
             });
             
-            // If both game over, end game
             if (room.hostGameOver && room.guestGameOver) {
               clearRoomTimers(room);
               broadcastToRoom(room, 'game_over', {
                 winnerId: null,
-                message: 'Both players exhausted attempts',
+                message: room.lang === 'ru' ? 'Ничья! Оба не угадали.' : 'Draw! Both failed to guess.',
                 word: null
               });
               
@@ -1037,7 +1040,6 @@ wss.on('connection', (ws) => {
               return;
             }
             
-            // If only one game over, the other player continues
             if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
               sendToClient(opponentWs, 'game_won', {
                 word: isHost ? room.hostWord : room.guestWord,
@@ -1059,7 +1061,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Pass turn (async mode only)
           if (room.multiMode === 'async') {
             if (room.hostGameOver) {
               room.currentTurn = room.guest;
@@ -1069,7 +1070,6 @@ wss.on('connection', (ws) => {
               room.currentTurn = isHost ? room.guest : room.host;
             }
             
-            // Reset turn timer
             if (room.turnTimer) {
               clearInterval(room.turnTimer);
               room.turnTimer = null;
@@ -1078,20 +1078,19 @@ wss.on('connection', (ws) => {
             
             const nextPlayer = clients.get(room.currentTurn);
             if (nextPlayer && nextPlayer.readyState === WebSocket.OPEN) {
-              sendToClient(nextPlayer, 'your_turn', { message: 'Your turn' });
+              sendToClient(nextPlayer, 'your_turn', { message: room.lang === 'ru' ? 'Ваш ход' : 'Your turn' });
             }
           }
           break;
         }
         
-        // ==================== DUEL TIMEOUT ====================
         case 'duel_timeout': {
           const room = findRoomByPlayer(ws.id);
           if (!room) return;
           
           clearRoomTimers(room);
           broadcastToRoom(room, 'duel_timeout', {
-            message: 'Duel time expired!'
+            message: room.lang === 'ru' ? 'Время дуэли истекло!' : 'Duel time expired!'
           });
           
           setTimeout(() => {
@@ -1105,7 +1104,6 @@ wss.on('connection', (ws) => {
           break;
         }
         
-        // ==================== LEAVE ROOM ====================
         case 'leave_room': {
           const room = findRoomByPlayer(ws.id);
           
@@ -1117,8 +1115,12 @@ wss.on('connection', (ws) => {
               console.log(`[LEAVE] ${player.name} left ${room.code}`);
               
               if (room.players.length > 0) {
+                const leaveMsg = room.lang === 'ru' 
+                  ? `${player.name} покинул комнату`
+                  : `${player.name} left the room`;
+                
                 broadcastToRoom(room, 'player_left', {
-                  message: `${player.name} left the room`,
+                  message: leaveMsg,
                   players: room.players
                 });
               }
@@ -1145,8 +1147,12 @@ wss.on('connection', (ws) => {
       const player = removePlayerFromRoom(room, ws.id);
       
       if (player && room.players.length > 0) {
+        const discMsg = room.lang === 'ru'
+          ? `${player.name} отключился`
+          : `${player.name} disconnected`;
+        
         broadcastToRoom(room, 'player_left', {
-          message: `${player.name} disconnected`,
+          message: discMsg,
           players: room.players
         });
       }
@@ -1160,7 +1166,6 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('[SHUTDOWN] SIGTERM received. Cleaning up...');
   for (let [code, room] of rooms) {
@@ -1179,14 +1184,14 @@ process.on('SIGTERM', () => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`========================================`);
-  console.log(`🚀 Wordle Server v7 running on port ${PORT}`);
+  console.log(`🚀 Wordle Server v8 running on port ${PORT}`);
   console.log(`📡 WebSocket: wss://localhost:${PORT}`);
   console.log(`❤️  Health: http://localhost:${PORT}/health`);
   console.log(`📊 Stats: http://localhost:${PORT}/stats`);
-  console.log(`🛡️  Word validation: ENABLED (banned words filtered)`);
-  console.log(`🚫 Anti-spam: ENABLED (${MAX_MESSAGES_PER_SECOND} msg/sec, ${MESSAGE_COOLDOWN}ms cooldown)`);
+  console.log(`🔓 Word validation: FORMAT ONLY (length + language)`);
+  console.log(`🚫 Chat profanity filter: ENABLED`);
   console.log(`📋 Public rooms list: ENABLED`);
-  console.log(`🔒 Chat profanity filter: ENABLED`);
+  console.log(`🌐 Localized messages: ENABLED (RU/EN)`);
   console.log(`⏱️  Turn timer: 60s (async) | Duel timer: 180s (live)`);
   console.log(`🔄 Room cleanup: 30min inactivity`);
   console.log(`========================================`);
