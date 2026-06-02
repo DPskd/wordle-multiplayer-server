@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
   }
   
   res.writeHead(200);
-  res.end('Wordle Multiplayer Server v8');
+  res.end('Wordle Multiplayer Server v9');
 });
 
 const wss = new WebSocket.Server({ server });
@@ -59,7 +59,7 @@ const MAX_MESSAGES_PER_SECOND = 3;
 const WORDS_RU = 'АРБУЗ,БАНКА,ВЕТЕР,ГОРОД,ДОЖДЬ,ЖАБРА,ЗЕБРА,ИГРОК,КАРТА,ЛОДКА,МОРОЗ,НОСОК,ПАРУС,РОМАН,САХАР,ТУМАН,ФАКЕЛ,ЦАПЛЯ,ЧАШКА,ШТОРМ,ЩЕНОК,ЭКРАН,ЮНОША,ЯБЕДА,ПИРОГ,ТОЧКА,РУЧКА,КНИГА,КОШКА,МЫШКА,ЗЕМЛЯ,ВОЛНА,ГРОЗА,ЗАКАТ,ОГОНЬ,БЕРЕГ,ЗАМОК,ЛИМОН,НИТКА,РУБЛЬ,СМЕНА,ТРОПА,ХОЛОД,ГОРКА,ИСКРА,СОСНА,ТОПОР,ЗВЕЗД,КЛЮЧИ,ПОЛЕТ,МЕСЯЦ,БРОВИ,МЕЧТА,ОТВЕТ,СЛОВО,ЧИСЛО,МЕСТО,ВРЕМЯ,ВЕЧЕР,УТРОМ,МЫСЛЬ'.split(',').filter(w => w.length === 5);
 const WORDS_EN = 'ABOUT,ABOVE,ACTOR,ADMIT,ADOPT,ADULT,AFTER,AGAIN,AGENT,ALBUM,ALERT,ALIKE,ALIVE,ALLOW,ALONE,ANGEL,ANGRY,APPLE,ARENA,ARGUE,ARISE,ARROW,ASIDE,AVOID,AWARD,BASIC,BEACH,BEGAN,BEGIN,BEING,BELOW,BIRTH,BLACK,BLADE,BLAME,BLANK,BLAST,BLAZE,BLEED,BLESS,BLIND,BLOCK,BLOOD,BOARD,BOOST,BRAIN,BRAND,BRAVE,BREAK,BREED,BRICK,BRIEF,BRING,BROAD,BROWN,BRUSH,BUILD,BURST,CANDY,CARRY,CAUSE,CHAIN,CHAIR,CHAOS,CHARM,CHEAP,CHECK,CHESS,CHEST,CHILD,CLEAN,CLEAR,CLIMB,CLOSE,CLOUD,COAST,COLOR,CORAL,COULD,COUNT,COURT,COVER,CRACK,CRAFT,CRASH,CRAZY,CREAM,CRIME,CROSS,CROWD,CROWN,CRUSH,CURVE,CYCLE,DAILY,DANCE,DEATH,DELAY,DEVIL,DIARY,DIRTY,DOING,DOUBT,DOUGH,DRAFT,DRAMA,DREAM,DRESS,DRINK,DRIVE,DRONE,EARLY,EARTH,EIGHT,ELECT,ELITE,EMPTY,ENEMY,ENJOY,ENTER,EQUAL,ERROR,EVENT,EVERY,EXACT,EXIST,EXTRA,FAITH,FALSE,FAULT,FENCE,FEVER,FIELD,FIGHT,FINAL,FIRST,FLAME,FLASH,FLOAT,FLOOR,FLUID,FOCUS,FORCE,FORTH,FOUND,FRAME,FRESH,FRONT,FROST,FRUIT,FULLY,FUNNY,GHOST,GIANT,GIVEN,GLASS,GLOBE,GLORY,GOING,GRACE,GRADE,GRAIN,GRAND,GRANT,GRASS,GRAVE,GREAT,GREEN,GROUP,GUARD,GUESS,GUEST,GUIDE,HAPPY,HEART,HEAVY,HELLO,HONEY,HONOR,HORSE,HOTEL,HOUSE,HUMAN,HUMOR,HURRY,IMAGE,INDEX,INNER,INPUT,ISSUE,JEWEL,JOINT,JUDGE,JUICE,KNOWN,LABEL,LARGE,LATER,LAUGH,LAYER,LEARN,LEAVE,LEGAL,LEVEL,LIGHT,LIMIT,LOCAL,LOGIC,LOOSE,LUNCH,MAGIC,MAJOR,MARCH,MATCH,MEDIA,METAL,MIGHT,MINOR,MINUS,MIXED,MODEL,MONEY,MONTH,MOUNT,MOUSE,MOUTH,MOVIE,MUSIC,NERVE,NEVER,NIGHT,NOISE,NORTH,NOVEL,NURSE,OCEAN,OFFER,OFTEN,OLIVE,ORDER,OTHER,OUGHT,OUTER,OWNER,PAINT,PANEL,PAPER,PARTY,PEACE,PEARL,PHASE,PHONE,PHOTO,PIANO,PIECE,PILOT,PIXEL,PLACE,PLAIN,PLANE,PLANT,PLATE,POINT,POWER,PRESS,PRICE,PRIDE,PRIME,PRIZE,PROOF,PROUD,PROVE,PUPIL,QUEEN,QUEST,QUICK,QUIET,QUITE,RADIO,RAISE,RANGE,RAPID,REACH,REACT,READY,REALM,REIGN,REPLY,RIGHT,RIVER,ROBOT,ROCKY,ROUGH,ROUND,ROUTE,ROYAL,RULER,RURAL,SAINT,SALAD,SAUCE,SCALE,SCENE,SCOPE,SCORE,SENSE,SERVE,SEVEN,SHADE,SHAKE,SHALL,SHAME,SHAPE,SHARE,SHARP,SHELF,SHELL,SHIFT,SHINE,SHIRT,SHOCK,SHOOT,SHORT,SHOUT,SIGHT,SINCE,SIXTH,SIXTY,SKILL,SLAVE,SLEEP,SLICE,SLIDE,SMART,SMELL,SMILE,SMOKE,SNAKE,SOLAR,SOLID,SOLVE,SORRY,SOUTH,SPACE,SPARE,SPARK,SPEAK,SPEED,SPEND,SPILL,SPINE,SPLIT,SPORT,SPRAY,SQUAD,STACK,STAGE,STAND,START,STATE,STEAM,STEEL,STICK,STILL,STOCK,STONE,STORE,STORM,STORY,STUDY,STYLE,SUGAR,SUPER,SWEAR,SWEEP,SWEET,SWIFT,SWING,SWORD,TABLE,TASTE,TEACH,THANK,THEIR,THEME,THERE,THICK,THING,THINK,THIRD,THOSE,THREE,THROW,TIGHT,TIRED,TITLE,TODAY,TOKEN,TOOTH,TOTAL,TOUCH,TOUGH,TOWER,TRACK,TRADE,TRAIL,TRAIN,TREAT,TREND,TRIAL,TRIBE,TRICK,TROOP,TRUCK,TRULY,TRUST,TRUTH,TWICE,TWIST,UNDER,UNION,UNITY,UNTIL,UPPER,UPSET,URBAN,USUAL,VALID,VALUE,VIDEO,VIRAL,VIRUS,VISIT,VITAL,VOCAL,VOICE,WATCH,WATER,WEIGH,WHEAT,WHEEL,WHERE,WHICH,WHILE,WHITE,WHOLE,WHOSE,WOMAN,WOMEN,WORLD,WORRY,WORSE,WORST,WORTH,WOULD,WOUND,WRITE,WRONG,WROTE,YACHT,YIELD,YOUNG,YOUTH,ZEBRA'.split(',').filter(w => w.length === 5);
 
-// ==================== BANNED WORDS (for chat filter only, NOT for word validation) ====================
+// ==================== BANNED WORDS (for chat filter only) ====================
 const BANNED_WORDS_RU = 'СУКА,БЛЯДЬ,БЛЯ,ПИЗДА,ХУЙ,ХУЕ,ХУЯ,ЕБАТЬ,ЕБАЛ,ЕБАН,ПИДОР,ПИДАР,ПИДОРАС,ПИДОРАСА,ГАНДОН,МУДАК,УЕБОК,ЗАЛУПА,ШЛЮХА,ПРОСТИТУТКА,ЕБЛО,ЖОПА,СРАКА,ГОВНО,ССАТЬ,СЦАТЬ,ТРАХАТЬ,ТРАХНУ,ВЫЕБАТЬ,ОТСОСИ,МИНЕТ,ДРОЧИТЬ,ДРОЧУ,КОНЧА,КОНЧИТЬ,ГЕЙ,ЛЕСБИ,ЛЕСБИЯНКА,ПЕДИК,ПЕДРИЛА,НИГГЕР,НИГА,НАЦИСТ,ФАШИСТ,ФАШИК,УБИТЬ,УБЬЮ,УБЕЙ,СМЕРТЬ,НАРКОТА,НАРКОТИК,КОКАИН,ГЕРОИН,МЕТАМФЕТАМИН,ТРАВКА,ВОДКА,БУХАТЬ,ПЬЯНЫЙ,ПЬЯНЬ,АЛКАШ,АЛКОГОЛИК,ДЕБИЛ,ДЕГЕНЕРАТ,ИДИОТ,ДАУН,УМСТВЕННО,УРОД,ЛОХ,ЧМО,ЧМЫРЬ,ХАМ,ХАМЛО,ПУТИН,ЗЕЛЕНСКИЙ,ТРАМП,БАЙДЕН,ВОЙНА,ПОРНО,СЕКС,СПЕРМА,КУНИ,АНИЛИНГУС'.split(',');
 const BANNED_WORDS_EN = 'FUCK,SHIT,BITCH,ASS,DICK,COCK,PUSSY,CUNT,NIGGA,NIGGER,FAG,FAGGOT,NAZI,HITLER,KILL,MURDER,DEATH,SUICIDE,TERROR,TERRORIST,RETARD,IDIOT,MORON,STUPID,PORN,SEX,SLUT,WHORE,PROSTITUTE,RAPE,DRUG,COCAINE,HEROIN,METH,WEED,MARIJUANA,PENIS,VAGINA,ANAL,ORAL,MASTURBATE,EJACULATE,TRUMP,BIDEN,PUTIN,ZELENSKY,WAR,DRUNK,ALCOHOL,VODKA,BEER'.split(',');
 const BANNED_PATTERNS_RU = [/х[уy]й/i, /п[иi][з3]д/i, /[еe]б[аa@][тt]/i, /[еe]б[аa@][лl]/i, /[еe]б[аa@][нn]/i, /[б6]л[яy][дt]/i, /[сc][уy][кk][аa]/i, /[нn][аa@][хx]/i, /[пp][иi][дd][оo][рp]/i, /[гg][еe][йy]/i, /[нn][иi][гg][еe][рp]/i, /[нn][аa@][цz][иi]/i, /[фf][аa@][шs][иi][сc][тt]/i, /[жg][иi][дd]/i, /[хx][оo][хx][оo][лl]/i, /[дd][аa@][уy][нn]/i, /[дd][еe][б6][иi][лl]/i, /[мm][уy][дd][аa@][кk]/i, /[гg][аa@][нn][дd][оo][нn]/i, /[ч4][мm][оo]/i, /[лl][оo][хx]/i, /[уy][б6][иi]/i, /[сc][мm][еe][рp][тt]/i, /[вv][оo][йy][нn]/i, /[пp][уy][тt][иi][нn]/i, /[з3][еe][лl][еe][нn][сc][кk]/i, /[тt][рp][аa@][мm][пp]/i, /[б6][аa@][йy][дd][еe][нn]/i, /[пp][оo][рp][нn][оo]/i, /[сc][еe][кk][сc]/i, /[тt][рp][аa@][хx]/i, /[шs][лl][юu][хx][аa@]/i];
@@ -70,7 +70,6 @@ function filterProfanity(text, lang) {
   const bannedList = lang === 'ru' ? BANNED_WORDS_RU : BANNED_WORDS_EN;
   const patterns = lang === 'ru' ? BANNED_PATTERNS_RU : BANNED_PATTERNS_EN;
   
-  // Split into words and filter each
   const words = filtered.split(/(\s+|[.,!?;:()\[\]{}"'])/);
   filtered = words.map(part => {
     if (/^\s+$/.test(part) || /^[.,!?;:()\[\]{}"']$/.test(part)) return part;
@@ -82,7 +81,6 @@ function filterProfanity(text, lang) {
     return cleaned;
   }).join('');
   
-  // Check for banned words hidden with spaces
   const noSpaces = filtered.replace(/\s+/g, '');
   const allBannedNoSpaces = bannedList.filter(w => w.length >= 3);
   allBannedNoSpaces.forEach(banned => {
@@ -92,7 +90,6 @@ function filterProfanity(text, lang) {
     filtered = filtered.replace(flexReg, match => '*'.repeat(match.replace(/\s/g, '').length));
   });
   
-  // Pattern matching
   patterns.forEach(pattern => {
     filtered = filtered.replace(pattern, match => '*'.repeat(match.length));
   });
@@ -100,8 +97,6 @@ function filterProfanity(text, lang) {
   return filtered;
 }
 
-// REMOVED: isBannedWord and isValidWord - no longer blocking words
-// Words are only validated by length and language (client-side)
 function isValidWordFormat(word, lang) {
   if (!word || word.length !== 5) return false;
   const wordRegex = lang === 'ru' ? /^[А-ЯЁ]+$/i : /^[A-Z]+$/i;
@@ -472,7 +467,8 @@ wss.on('connection', (ws) => {
         case 'get_public_rooms': {
           const publicRooms = [];
           for (let [code, room] of rooms) {
-            if (!room.isPrivate && room.players.length < 2 && !room.gameStarted) {
+            // Only show async rooms in public list (live rooms are matchmade)
+            if (!room.isPrivate && room.players.length < 2 && !room.gameStarted && room.multiMode === 'async') {
               publicRooms.push({
                 code: room.code,
                 lang: room.lang,
@@ -495,12 +491,13 @@ wss.on('connection', (ws) => {
           
           const code = generateRoomCode();
           const roomLang = data.lang || 'ru';
+          const roomMode = data.multiMode || 'async';
           const room = {
             code,
             host: ws.id,
             guest: null,
             lang: roomLang,
-            multiMode: data.multiMode || 'async',
+            multiMode: roomMode,
             isPrivate: data.isPrivate !== undefined ? data.isPrivate : false,
             players: [{ 
               id: ws.id, 
@@ -555,11 +552,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          if (room.isPrivate) {
-            // Only allow join by code for private rooms
-            // This is handled by the client sending the correct code
-          }
-          
           const joinLang = data.lang || 'ru';
           if (joinLang !== room.lang) {
             const msg = joinLang === 'ru' 
@@ -610,6 +602,8 @@ wss.on('connection', (ws) => {
           const myMode = data.multiMode || 'async';
           let foundRoom = false;
           
+          // For live mode - match only with live rooms
+          // For async mode - match only with async rooms
           for (let [code, room] of rooms) {
             if (
               room.players.length < 2 && 
@@ -644,7 +638,7 @@ wss.on('connection', (ws) => {
                 });
               }
               foundRoom = true;
-              console.log(`[QUICK] ${ws.nickname} joined ${room.code}`);
+              console.log(`[QUICK] ${ws.nickname} joined ${room.code} (mode: ${myMode})`);
               break;
             }
           }
@@ -691,7 +685,7 @@ wss.on('connection', (ws) => {
               isPrivate: false,
               lang: room.lang
             });
-            console.log(`[QUICK] Created room ${code} (${ws.nickname})`);
+            console.log(`[QUICK] Created room ${code} (${ws.nickname}, mode: ${myMode})`);
           }
           break;
         }
@@ -792,13 +786,14 @@ wss.on('connection', (ws) => {
           
           room.lastActivity = Date.now();
           
+          // DO NOT send back to sender - client already added the message locally
           broadcastToRoom(room, 'chat_message', {
             sender: ws.nickname || 'Player',
             message: filteredMessage,
             room: data.room || 'lobby',
             activeColor: ws.activeColor || '',
             senderId: ws.id
-          });
+          }, ws); // Exclude sender
           break;
         }
         
@@ -852,7 +847,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Only validate format, not dictionary or banned words
           if (!data.word || !isValidWordFormat(data.word, room.lang)) {
             const msg = room.lang === 'ru' 
               ? 'Недопустимый формат слова (5 букв)' 
@@ -915,7 +909,6 @@ wss.on('connection', (ws) => {
             return;
           }
           
-          // Only validate format
           if (!data.guess || !isValidWordFormat(data.guess, room.lang)) {
             const msg = room.lang === 'ru' ? 'Недопустимый формат слова' : 'Invalid word format';
             sendToClient(ws, 'error', { message: msg });
@@ -1184,13 +1177,15 @@ process.on('SIGTERM', () => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`========================================`);
-  console.log(`🚀 Wordle Server v8 running on port ${PORT}`);
+  console.log(`🚀 Wordle Server v9 running on port ${PORT}`);
   console.log(`📡 WebSocket: wss://localhost:${PORT}`);
   console.log(`❤️  Health: http://localhost:${PORT}/health`);
   console.log(`📊 Stats: http://localhost:${PORT}/stats`);
   console.log(`🔓 Word validation: FORMAT ONLY (length + language)`);
   console.log(`🚫 Chat profanity filter: ENABLED`);
-  console.log(`📋 Public rooms list: ENABLED`);
+  console.log(`📋 Public rooms: async mode only`);
+  console.log(`⚔️  Duel matchmaking: via quick_play (live mode)`);
+  console.log(`💬 Chat: NOT sent back to sender (client-side rendering)`);
   console.log(`🌐 Localized messages: ENABLED (RU/EN)`);
   console.log(`⏱️  Turn timer: 60s (async) | Duel timer: 180s (live)`);
   console.log(`🔄 Room cleanup: 30min inactivity`);
